@@ -120,4 +120,23 @@ describe('zebec', () => {
     });
     console.log("Your transaction signature", tx);
   });
+  it('Resume Stream', async () => {
+    const [withdraw_data, _]= await PublicKey.findProgramAddress([
+      anchor.utils.bytes.utf8.encode(PREFIX),sender.publicKey.toBuffer()], program.programId
+    )
+    const [zebecVault, bumps]= await PublicKey.findProgramAddress([
+      sender.publicKey.toBuffer()], program.programId
+    )
+    const tx = await program.rpc.pauseStream({
+      accounts:{
+        sender: sender.publicKey,
+        receiver:receiver.publicKey,
+        pda:pda.publicKey,
+      },
+      signers:[sender],
+      instructions:[
+      ],
+    });
+    console.log("Your transaction signature", tx);
   });
+});

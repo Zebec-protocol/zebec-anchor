@@ -98,11 +98,49 @@ mod zebec {
             return Err(ErrorCode::EscrowMismatch.into());
         }
         if pda.paused ==1{
-            return Err(ErrorCode::AlreadyPaused.into());
+            let time_spent = now - pda.paused_at;
+            let paused_start_time = pda.start_time + time_spent;
+            let paused_amount = pda.allowed_amt(paused_start_time);
+            let current_amount = pda.allowed_amt(now);
+            let total_amount_to_sent = current_amount - paused_amount;
+            msg!("total_amount_to_sent: {},  paused_amount:{}, current_amount:{}",total_amount_to_sent,paused_amount,current_amount);
+            pda.amount = pda.amount - total_amount_to_sent;
+            pda.paused = 0;
+            pda.start_time += time_spent;
+            pda.end_time += time_spent;
+            pda.paused_at = 0;
         }
-        pda.paused = 1;
-        pda.withdraw_limit = allowed_amt;
-        pda.paused_at = Some(now);
+        else{
+            pda.paused = 1;
+            pda.withdraw_limit = allowed_amt;
+            pda.paused_at = now;
+        }
+        Ok(())
+    }
+    pub fn resume_stream(
+        ctx: Context<Pause>,
+    ) -> Result<()> {
+        let sender = &mut  ctx.accounts.sender;
+        let pda = &mut ctx.accounts.pda;
+        let receiver =&mut  ctx.accounts.receiver;
+        let now = Clock::get()?.unix_timestamp as u64;
+        if *sender.key != pda.sender || *receiver.key != pda.receiver {
+            return Err(ErrorCode::EscrowMismatch.into());
+        }
+        if pda.paused ==0{
+            return Err(ErrorCode::AlreadyResumed.into());
+        }
+        let time_spent = now - pda.paused_at;
+        let paused_start_time = pda.start_time + time_spent;
+        let paused_amount = pda.allowed_amt(paused_start_time);
+        let current_amount = pda.allowed_amt(now);
+        let total_amount_to_sent = current_amount - paused_amount;
+        msg!("total_amount_to_sent: {},  paused_amount:{}, current_amount:{}",total_amount_to_sent,paused_amount,current_amount);
+        pda.amount = pda.amount - total_amount_to_sent;
+        pda.paused = 0;
+        pda.start_time += time_spent;
+        pda.end_time += time_spent;
+        pda.paused_at = 0;
         Ok(())
     }
 }
@@ -153,7 +191,7 @@ pub struct Stream {
     pub sender:   Pubkey,
     pub receiver: Pubkey,
     pub withdrawn: u64,
-    pub paused_at: Option<u64>
+    pub paused_at: u64
 }
 impl Stream {
     pub fn allowed_amt(&self, now: u64) -> u64 {
