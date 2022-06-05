@@ -13,7 +13,8 @@ describe('zebec', () => {
 
   const program = new anchor.Program(idl, programId);
   const PREFIX = "withdraw_sol"
-  
+  const PREFIXMULTISIG = "withdraw_multisig_sol";
+
   const sender = anchor.web3.Keypair.generate();
   const pda = anchor.web3.Keypair.generate();
   const receiver = anchor.web3.Keypair.generate();
@@ -134,6 +135,35 @@ describe('zebec', () => {
         pda:pda.publicKey,
       },
       signers:[sender],
+      instructions:[
+      ],
+    });
+    console.log("Your transaction signature", tx);
+  });
+  it('Create Multisig', async () => {
+    const [withdraw_data, _]= await PublicKey.findProgramAddress([
+      anchor.utils.bytes.utf8.encode(PREFIX),sender.publicKey.toBuffer()], program.programId
+    )
+    const [zebecVault, bumps]= await PublicKey.findProgramAddress([
+      sender.publicKey.toBuffer()], program.programId
+    )
+    const pda = anchor.web3.Keypair.generate();
+
+    const [multisig_safe, _bumps]= await PublicKey.findProgramAddress([
+      anchor.utils.bytes.utf8.encode(PREFIXMULTISIG),
+      pda.publicKey.toBuffer()], program.programId
+    )
+    
+    const multisigSize = 392; 
+    const signers = [sender.publicKey,receiver.publicKey,anchor.web3.Keypair.generate().publicKey]
+    const tx = await program.rpc.createMultisig(signers,new anchor.BN(2),{
+      accounts:{
+        multisigSafe:multisig_safe,
+        sender: sender.publicKey,
+        pda:pda.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      },
+      signers:[sender,pda],
       instructions:[
       ],
     });

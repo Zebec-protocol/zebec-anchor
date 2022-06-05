@@ -143,6 +143,16 @@ mod zebec {
         pda.paused_at = 0;
         Ok(())
     }
+    pub fn create_multisig(
+        ctx: Context<MultisigSafe>,
+        signers: Vec<Pubkey>,
+        m: u64
+    ) -> Result<()> {
+        let pda = &mut ctx.accounts.pda;
+        pda.signers = signers;
+        pda.m = m;
+        Ok(())
+    }
 }
 #[derive(Accounts)]
 pub struct InitializeMasterPda<'info> {
@@ -230,4 +240,29 @@ pub struct Pause<'info> {
     pub receiver: AccountInfo<'info>,
     #[account(mut)]
     pub pda:  Account<'info, Stream>,
+}
+#[derive(Accounts)]
+pub struct MultisigSafe<'info> {
+    #[account(
+        init,
+        payer=sender,
+        seeds = [
+            PREFIXMULTISIG.as_bytes(),
+            pda.key().as_ref(),
+        ],bump,
+        space=200+1+8,
+    )]
+    /// CHECK
+    pub multisig_safe: AccountInfo<'info>,
+    #[account(mut)]
+    pub sender: Signer<'info>,
+    #[account(init, payer=sender,signer, space=32*11+8+32)]
+    pub pda:  Account<'info, Multisig>,
+    pub system_program: Program<'info, System>,
+}
+#[account]
+pub struct Multisig{
+    pub signers: Vec<Pubkey>,
+    pub m: u64,
+    pub multisig_safe: Pubkey,
 }
