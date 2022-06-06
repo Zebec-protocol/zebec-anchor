@@ -71,8 +71,7 @@ mod zebec {
         if pda.paused == 1 && allowed_amt > pda.withdraw_limit {
                     return Err(ErrorCode::InsufficientFunds.into());
         }
-        let (account_address, _bump_seed) = get_zabec_vault_address_and_bump_seed(ctx.accounts.sender.to_account_info().key,&id());
-        assert_keys_equal(account_address,*ctx.accounts.zebec_vault.to_account_info().key)?;
+        // let (account_address, _bump_seed) = get_zabec_vault_address_and_bump_seed(ctx.accounts.sender.to_account_info().key,&id());
         create_transfer_signed(ctx.accounts.zebec_vault.to_account_info(),ctx.accounts.receiver.to_account_info(),allowed_amt)?;
         pda.withdrawn= pda.withdrawn.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
         if pda.withdrawn == pda.amount { 
