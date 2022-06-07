@@ -4,7 +4,7 @@ declare_id!("3svmYpJGih9yxkgqpExNdQZLKQ7Wu5SEjaVUbmbytUJg");
 
 pub mod utils;
 pub mod error;
-use crate::{utils::{create_transfer,get_zabec_vault_address_and_bump_seed,create_transfer_signed,assert_keys_equal},error::ErrorCode};
+use crate::{utils::{create_transfer,create_transfer_signed},error::ErrorCode};
 
 pub const PREFIX: &str = "withdraw_sol";
 pub const PREFIX_TOKEN: &str = "withdraw_token";
@@ -50,7 +50,6 @@ mod zebec {
         ctx: Context<Withdraw>,
     ) -> Result<()> {
         let pda = &mut ctx.accounts.pda;
-        let receiver =&mut  ctx.accounts.receiver;
         let zebec_vault =&mut  ctx.accounts.zebec_vault;
         let system = &mut ctx.accounts.system_program.to_account_info();  
         let now = Clock::get()?.unix_timestamp as u64;
@@ -62,16 +61,12 @@ mod zebec {
             allowed_amt = pda.amount;
         }
         allowed_amt = allowed_amt.checked_sub(pda.withdrawn).ok_or(ErrorCode::AlreadyWithdrawnStreamingAmount)?;
-        if *receiver.key != pda.receiver {
-            return Err(ErrorCode::EscrowMismatch.into());
-        }
         if allowed_amt > zebec_vault.lamports(){
             return Err(ErrorCode::InsufficientFunds.into());
         }
         if pda.paused == 1 && allowed_amt > pda.withdraw_limit {
                     return Err(ErrorCode::InsufficientFunds.into());
         }
-        // let (account_address, _bump_seed) = get_zabec_vault_address_and_bump_seed(ctx.accounts.sender.to_account_info().key,&id());
         create_transfer_signed(ctx.accounts.zebec_vault.to_account_info(),ctx.accounts.receiver.to_account_info(),allowed_amt)?;
         pda.withdrawn= pda.withdrawn.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
         if pda.withdrawn == pda.amount { 
@@ -82,9 +77,7 @@ mod zebec {
     pub fn pause_stream(
         ctx: Context<Pause>,
     ) -> Result<()> {
-        let sender = &mut  ctx.accounts.sender;
         let pda = &mut ctx.accounts.pda;
-        let receiver =&mut  ctx.accounts.receiver;
         let now = Clock::get()?.unix_timestamp as u64;
         let allowed_amt = pda.allowed_amt(now);
         if now >= pda.end_time {
@@ -93,16 +86,13 @@ mod zebec {
         if now < pda.start_time{
             return Err(ErrorCode::StreamNotStarted.into());
         }
-        if *sender.key != pda.sender || *receiver.key != pda.receiver { 
-            return Err(ErrorCode::EscrowMismatch.into());
-        }
+
         if pda.paused ==1{
             let time_spent = now - pda.paused_at;
             let paused_start_time = pda.start_time + time_spent;
             let paused_amount = pda.allowed_amt(paused_start_time);
             let current_amount = pda.allowed_amt(now);
             let total_amount_to_sent = current_amount - paused_amount;
-            msg!("total_amount_to_sent: {},  paused_amount:{}, current_amount:{}",total_amount_to_sent,paused_amount,current_amount);
             pda.amount = pda.amount - total_amount_to_sent;
             pda.paused = 0;
             pda.start_time += time_spent;
@@ -116,32 +106,7 @@ mod zebec {
         }
         Ok(())
     }
-    pub fn resume_stream(
-        ctx: Context<Pause>,
-    ) -> Result<()> {
-        let sender = &mut  ctx.accounts.sender;
-        let pda = &mut ctx.accounts.pda;
-        let receiver =&mut  ctx.accounts.receiver;
-        let now = Clock::get()?.unix_timestamp as u64;
-        if *sender.key != pda.sender || *receiver.key != pda.receiver {
-            return Err(ErrorCode::EscrowMismatch.into());
-        }
-        if pda.paused ==0{
-            return Err(ErrorCode::AlreadyResumed.into());
-        }
-        let time_spent = now - pda.paused_at;
-        let paused_start_time = pda.start_time + time_spent;
-        let paused_amount = pda.allowed_amt(paused_start_time);
-        let current_amount = pda.allowed_amt(now);
-        let total_amount_to_sent = current_amount - paused_amount;
-        msg!("total_amount_to_sent: {},  paused_amount:{}, current_amount:{}",total_amount_to_sent,paused_amount,current_amount);
-        pda.amount = pda.amount - total_amount_to_sent;
-        pda.paused = 0;
-        pda.start_time += time_spent;
-        pda.end_time += time_spent;
-        pda.paused_at = 0;
-        Ok(())
-    }
+
     pub fn create_multisig(
         ctx: Context<MultisigSafe>,
         signers: Vec<Pubkey>,
@@ -228,7 +193,10 @@ pub struct Withdraw<'info> {
     pub sender: AccountInfo<'info>,
     #[account(mut)]
     pub receiver: Signer<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = pda.receiver == receiver.key(),
+        constraint = pda.sender == sender.key()
+    )]
     pub pda:  Account<'info, Stream>,
     pub system_program: Program<'info, System>,
 }
@@ -237,7 +205,10 @@ pub struct Pause<'info> {
     pub sender: Signer<'info>,
     /// CHECK: test
     pub receiver: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(mut,
+        constraint = pda.receiver == receiver.key(),
+        constraint = pda.sender == sender.key()
+    )]
     pub pda:  Account<'info, Stream>,
 }
 #[derive(Accounts)]
