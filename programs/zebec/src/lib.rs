@@ -167,7 +167,9 @@ mod zebec {
 
         //data_account signer seeds
         let map = ctx.bumps;
-        let (_key, bump) = map.iter().next().unwrap();
+        let (key, bump) = map.iter().next_back().unwrap();
+        msg!("{:?}",key);
+        msg!("{}",bump);
         let bump=bump.to_be_bytes();            
         let inner = vec![
             ctx.accounts.source_account.key.as_ref(),
@@ -194,7 +196,7 @@ mod zebec {
         let cpi_ctx_fee = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), 
                                     transfer_instruction_fee,
                                     outer.as_slice());
-        anchor_spl::token::transfer(cpi_ctx_fee, receiver_amount)?;
+        anchor_spl::token::transfer(cpi_ctx_fee, comission)?;
 
         if escrow.paused == 1{
             msg!("{:?}{}",escrow.withdraw_limit,amount);
@@ -410,6 +412,14 @@ pub struct TokenDeposit<'info> {
 #[derive(Accounts)]
 pub struct TokenWithdrawStream<'info> {
 
+     //masterPDA
+     #[account(
+        seeds = [
+            source_account.key().as_ref(),
+        ],bump,
+    )]
+    /// CHECK:
+    pub zebec_vault: AccountInfo<'info>,
     #[account(mut)]
     pub dest_account: Signer<'info>,
     //User Account
@@ -421,14 +431,6 @@ pub struct TokenWithdrawStream<'info> {
     )]
     /// CHECK:
     pub fee_receiver:AccountInfo<'info>,
-     //masterPDA
-     #[account(
-        seeds = [
-            source_account.key().as_ref(),
-        ],bump,
-    )]
-    /// CHECK:
-    pub zebec_vault: AccountInfo<'info>,
     //data account
     #[account(mut,
             owner=id(),
