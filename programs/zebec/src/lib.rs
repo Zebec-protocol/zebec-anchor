@@ -167,9 +167,7 @@ mod zebec {
 
         //data_account signer seeds
         let map = ctx.bumps;
-        let (key, bump) = map.iter().next_back().unwrap();
-        msg!("{:?}",key);
-        msg!("{}",bump);
+        let (_key, bump) = map.iter().next_back().unwrap();
         let bump=bump.to_be_bytes();            
         let inner = vec![
             ctx.accounts.source_account.key.as_ref(),
