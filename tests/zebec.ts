@@ -378,7 +378,7 @@ describe('zebec', () => {
       spl.TOKEN_PROGRAM_ID,
       spl.ASSOCIATED_TOKEN_PROGRAM_ID,
     )
-      const amount=new anchor.BN(1)  
+      const amount=new anchor.BN(100)  
       const tx = await program.rpc.withdrawTokenStream(amount,{
         accounts:{
           destAccount:dest.publicKey,
@@ -398,7 +398,9 @@ describe('zebec', () => {
         },
         signers:[dest,],
     });
-    console.log("Your signature is ", tx);
+    console.log("Your signature for withdraw is ", tx);
+    await delay(100000);
     }
+ 
     )
   });
