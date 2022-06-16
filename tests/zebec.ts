@@ -7,7 +7,7 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
   // Configure the client to use the local cluster.
   const provider = anchor.Provider.env();
   anchor.setProvider(provider)
-  const programId = new anchor.web3.PublicKey("GV69LiQSEYLkgVFkNCfqYq943fXiphLNDnRBkoVnJAoL");
+  const programId = new anchor.web3.PublicKey("3svmYpJGih9yxkgqpExNdQZLKQ7Wu5SEjaVUbmbytUJg");
   const idl = JSON.parse(
     require("fs").readFileSync("./target/idl/zebec.json", "utf8")
   );
@@ -253,8 +253,8 @@ describe('zebec token', () => {
       return userAssociatedTokenAccount;
     }
     it('Airdrop Solana', async()=>{
-      airdrop_sol(user.publicKey)
-      airdrop_sol(dest.publicKey)
+      await airdrop_sol(user.publicKey)
+      await airdrop_sol(dest.publicKey)
     })
     it('Token Stream',async()=>{
       const mint = await createMint(provider.connection);

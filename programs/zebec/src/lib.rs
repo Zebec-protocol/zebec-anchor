@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token::{Mint, Token, TokenAccount, Transfer}};
 use std::{convert::Into,str::FromStr};
-declare_id!("GV69LiQSEYLkgVFkNCfqYq943fXiphLNDnRBkoVnJAoL");
+declare_id!("3svmYpJGih9yxkgqpExNdQZLKQ7Wu5SEjaVUbmbytUJg");
 
 pub mod utils;
 pub mod error;
