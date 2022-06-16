@@ -1,5 +1,6 @@
 
 use anchor_lang::prelude::*;
+use anchor_spl::token::Transfer;
 use solana_program::{program::{invoke},system_instruction};
 use crate::{error::ErrorCode};
 
@@ -40,7 +41,27 @@ pub fn create_transfer_signed<'a>(
 
     Ok(())
 }
+pub fn create_transfer_token_signed<'a>
+(
+ token_program:AccountInfo<'a>,
+ sender:    AccountInfo<'a>,
+ receiver:  AccountInfo<'a>,
+ authority: AccountInfo<'a>,
+ seeds:     std::vec::Vec<&[&[u8]]>,
+ receiver_amount: u64,
+) -> Result<()> {
+    let transfer_instruction = Transfer{
+        from: sender,
+        to: receiver,
+        authority: authority,
+    };
+    let cpi_ctx = CpiContext::new_with_signer(token_program, 
+                                transfer_instruction,
+                                seeds.as_slice());
+    anchor_spl::token::transfer(cpi_ctx, receiver_amount)?;
 
+    Ok(())
+}
 pub fn get_zabec_vault_address_and_bump_seed(
     sender: &Pubkey,
     program_id: &Pubkey,

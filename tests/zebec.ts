@@ -171,12 +171,7 @@ describe('zebec', () => {
   });
   });
 
-  describe('zebec token', () => {
-    // const user =  anchor.web3.Keypair.generate();
-    // const dest =  anchor.web3.Keypair.generate();
-    // const tokenMint = new anchor.web3.Keypair();
-    // const fee_receiver = new anchor.web3.PublicKey("EsDV3m3xUZ7g8QKa1kFdbZT18nNz8ddGJRcTK84WDQ7k")
-
+describe('zebec token', () => {
     const program = new anchor.Program(idl, programId);
     const sender = anchor.web3.Keypair.generate();
     const dataAccount = anchor.web3.Keypair.generate();
@@ -214,8 +209,8 @@ describe('zebec', () => {
       const signature = await provider.send(tx, [tokenMint]);
       console.log(`[${tokenMint.publicKey}] Created new mint account at ${signature}`);
       return tokenMint.publicKey;
-  }
-  const createUserAndAssociatedWallet = async (connection: anchor.web3.Connection, mint?: anchor.web3.PublicKey): Promise<anchor.web3.PublicKey | undefined> => {
+    }
+    const createUserAndAssociatedWallet = async (connection: anchor.web3.Connection, mint?: anchor.web3.PublicKey): Promise<anchor.web3.PublicKey | undefined> => {
     let userAssociatedTokenAccount: anchor.web3.PublicKey | undefined = undefined;
     // Fund user with some SOL
     let txFund = new anchor.web3.Transaction();
@@ -347,8 +342,7 @@ describe('zebec', () => {
         ],
       });
       console.log("Your transaction signature", tx);
-    });
-  
+    });  
     it('Withdraw Token Stream',async()=>{
   
       const connection = new Connection("http://localhost:8899", "confirmed");
@@ -399,7 +393,6 @@ describe('zebec', () => {
         signers:[dest,],
     });
     console.log("Your signature for withdraw is ", tx);
-    await delay(100000);
     }
  
     )
