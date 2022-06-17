@@ -72,7 +72,7 @@ describe('zebec', () => {
         sender: sender.publicKey,
         receiver:receiver.publicKey
       },
-      signers:[sender,dataAccount],
+      signers:[sender],
       instructions:[
         // await program.account.stream.createInstruction(sender,2000),
       ],
@@ -141,41 +141,9 @@ describe('zebec', () => {
     });
     console.log("Your transaction signature", tx);
   });
-  it('Create Multisig', async () => {
-    const [withdraw_data, _]= await PublicKey.findProgramAddress([
-      anchor.utils.bytes.utf8.encode(PREFIX),sender.publicKey.toBuffer()], program.programId
-    )
-    const [zebecVault, bumps]= await PublicKey.findProgramAddress([
-      sender.publicKey.toBuffer()], program.programId
-    )
-    dataAccount = anchor.web3.Keypair.generate();
-
-    const [multisig_safe, _bumps]= await PublicKey.findProgramAddress([
-      anchor.utils.bytes.utf8.encode(PREFIXMULTISIG),
-      dataAccount.publicKey.toBuffer()], program.programId
-    )
-    const multisigSize = 392; 
-    const signers = [sender.publicKey,receiver.publicKey,anchor.web3.Keypair.generate().publicKey]
-    const tx = await program.rpc.createMultisig(signers,new anchor.BN(2),{
-      accounts:{
-        multisigSafe:multisig_safe,
-        sender: sender.publicKey,
-        dataAccount:dataAccount.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
-      },
-      signers:[sender,dataAccount],
-      instructions:[
-      ],
-    });
-    console.log("Your transaction signature", tx);
-  });
   });
 
   describe('zebec token', () => {
-    // const user =  anchor.web3.Keypair.generate();
-    // const dest =  anchor.web3.Keypair.generate();
-    // const tokenMint = new anchor.web3.Keypair();
-    // const fee_receiver = new anchor.web3.PublicKey("EsDV3m3xUZ7g8QKa1kFdbZT18nNz8ddGJRcTK84WDQ7k")
 
     const program = new anchor.Program(idl, programId);
     const sender = anchor.web3.Keypair.generate();
@@ -350,9 +318,7 @@ describe('zebec', () => {
     });
   
     it('Withdraw Token Stream',async()=>{
-  
-      const connection = new Connection("http://localhost:8899", "confirmed");
-       const [zebecVault, _]= await PublicKey.findProgramAddress([
+         const [zebecVault, _]= await PublicKey.findProgramAddress([
         user.publicKey.toBuffer(),], program.programId);
       const [withdraw_data, _b]= await PublicKey.findProgramAddress([
         anchor.utils.bytes.utf8.encode(PREFIX_TOKEN),user.publicKey.toBuffer(),tokenMint.publicKey.toBuffer()], program.programId)
@@ -399,7 +365,7 @@ describe('zebec', () => {
         signers:[dest,],
     });
     console.log("Your signature for withdraw is ", tx);
-    await delay(100000);
+    await delay(10);
     }
  
     )

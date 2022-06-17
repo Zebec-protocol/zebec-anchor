@@ -1,12 +1,13 @@
 [programs.localnet]
-zebec = "GV69LiQSEYLkgVFkNCfqYq943fXiphLNDnRBkoVnJAoL"
+zebec = "3svmYpJGih9yxkgqpExNdQZLKQ7Wu5SEjaVUbmbytUJg"
+multisig = "GbepLUYxQG4dcjRqXGyuc98nnDQoTxah1Rm2tBWRdh5j"
 
 [registry]
 url = "https://anchor.projectserum.com"
 
 [provider]
 cluster = "localnet"
-wallet = "/Users/samundrakarki/.config/solana/id.json"
+wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/**"

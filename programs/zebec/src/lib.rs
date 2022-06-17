@@ -10,7 +10,7 @@ use crate::{utils::{create_transfer,create_transfer_signed},error::ErrorCode};
 
 pub const PREFIX: &str = "withdraw_sol";
 pub const PREFIX_TOKEN: &str = "withdraw_token";
-pub const PREFIXMULTISIG: &str = "withdraw_multisig_sol";
+pub const PREFIXVAULT: &str = "vault";
 pub const PREFIXMULTISIGSAFE: &str = "multisig_safe";
 pub const FEERECEIVER: &str ="EsDV3m3xUZ7g8QKa1kFdbZT18nNz8ddGJRcTK84WDQ7k";
 #[program]
@@ -261,8 +261,8 @@ mod zebec {
         }
         Ok(())
     }
-    pub fn create_multisig(
-        ctx: Context<MultisigSafe>,
+    pub fn create_vault(
+        ctx: Context<Vault>,
         signers: Vec<Pubkey>,
         m: u64
     ) -> Result<()> {
@@ -475,13 +475,13 @@ pub struct TokenWithdrawStream<'info> {
     fee_reciever_token_account: Box<Account<'info, TokenAccount>>,
 }
 #[derive(Accounts)]
-pub struct MultisigSafe<'info> {
+pub struct Vault<'info> {
     #[account(
         init,
         payer=sender,
         seeds = [
-            PREFIXMULTISIG.as_bytes(),
-            data_account.key().as_ref(),
+            PREFIXVAULT.as_bytes(),
+            sender.key().as_ref(),
         ],bump,
         space=200+1+8,
     )]
