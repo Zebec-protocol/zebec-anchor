@@ -5,7 +5,7 @@ declare_id!("3svmYpJGih9yxkgqpExNdQZLKQ7Wu5SEjaVUbmbytUJg");
 
 pub mod utils;
 pub mod error;
-use crate::{utils::{create_transfer,create_transfer_signed},error::ErrorCode};
+use crate::{utils::{create_transfer,create_transfer_signed,create_transfer_token_signed},error::ErrorCode};
 
 
 pub const PREFIX: &str = "withdraw_sol";
@@ -107,7 +107,6 @@ mod zebec {
         }
         Ok(())
     }
-
     pub fn token_stream(
         ctx:Context<TokenStream>,
         start_time:u64,
@@ -174,27 +173,20 @@ mod zebec {
             bump.as_ref(),
         ];
         let outer = vec![inner.as_slice()];
-        //from masterPDA to destination
-        let transfer_instruction = Transfer{
-            from: ctx.accounts.pda_account_token_account.to_account_info(),
-            to: ctx.accounts.dest_token_account.to_account_info(),
-            authority: ctx.accounts.zebec_vault.to_account_info(),
-        };
-        let cpi_ctx = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), 
-                                    transfer_instruction,
-                                    outer.as_slice());
-        anchor_spl::token::transfer(cpi_ctx, receiver_amount)?;
-
-            //from masterPDA to feepayer
-            let transfer_instruction_fee = Transfer{
-            from: ctx.accounts.pda_account_token_account.to_account_info(),
-            to: ctx.accounts.fee_reciever_token_account.to_account_info(),
-            authority: ctx.accounts.zebec_vault.to_account_info(),
-        };
-        let cpi_ctx_fee = CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), 
-                                    transfer_instruction_fee,
-                                    outer.as_slice());
-        anchor_spl::token::transfer(cpi_ctx_fee, comission)?;
+        //transfering receiver amount
+        create_transfer_token_signed(ctx.accounts.token_program.to_account_info(), 
+                                     ctx.accounts.pda_account_token_account.to_account_info(),
+                                     ctx.accounts.dest_token_account.to_account_info(),
+                                     ctx.accounts.zebec_vault.to_account_info(),
+                                     outer.clone(),
+                                     receiver_amount)?;
+         //transfering comission amount
+         create_transfer_token_signed(  ctx.accounts.token_program.to_account_info(), 
+                                        ctx.accounts.pda_account_token_account.to_account_info(),
+                                        ctx.accounts.fee_reciever_token_account.to_account_info(),
+                                        ctx.accounts.zebec_vault.to_account_info(),
+                                        outer,
+                                        comission)?;  
 
         if escrow.paused == 1{
             msg!("{:?}{}",escrow.withdraw_limit,amount);

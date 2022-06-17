@@ -72,7 +72,7 @@ describe('zebec', () => {
         sender: sender.publicKey,
         receiver:receiver.publicKey
       },
-      signers:[sender],
+      signers:[sender,dataAccount],
       instructions:[
         // await program.account.stream.createInstruction(sender,2000),
       ],
