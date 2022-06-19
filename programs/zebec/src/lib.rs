@@ -283,7 +283,16 @@ pub struct InitializeMasterPda<'info> {
 }
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(zero,signer)]
+    #[account(
+        init,
+        payer=withdraw_data,
+        seeds = [
+            sender.key().as_ref(),
+            //todo        
+        ],bump,
+        space=200+1+8,
+    )]
+
     pub data_account:  Account<'info, Stream>,
     #[account(
         init,
@@ -506,7 +515,8 @@ impl Stream {
 }
 #[account]
 pub struct StreamedAmt {
-    pub amount: u64
+    pub amount: u64,
+    pub counter: u8
 }
 
 #[account]
