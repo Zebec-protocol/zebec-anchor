@@ -62,19 +62,20 @@ describe('zebec', () => {
     const startTime = new anchor.BN(now-1000) 
     const paused = new anchor.BN(now) 
     const endTime=new anchor.BN(now+3600)
-    console.log("Time: "+endTime.toString())
     const amount=new anchor.BN(1000)
+    let pda = anchor.web3.Keypair.generate();
+
     const tx = await program.rpc.nativeStream(startTime,endTime,amount,{
       accounts:{
-        dataAccount: dataAccount.publicKey,
+        pda: pda.publicKey,
         withdrawData: withdraw_data,
         systemProgram: anchor.web3.SystemProgram.programId,
         sender: sender.publicKey,
         receiver:receiver.publicKey
       },
-      signers:[sender,dataAccount],
+      signers:[sender,pda],
       instructions:[
-        // await program.account.stream.createInstruction(sender,2000),
+        await program.account.pda.createInstruction(pda,3000),
       ],
     });
     console.log("Your transaction signature", tx);

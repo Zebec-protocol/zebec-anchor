@@ -283,7 +283,7 @@ pub struct InitializeMasterPda<'info> {
 }
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(init, payer=sender,signer, space=8+8+8+8+8+32+32+8+8+200)]
+    #[account(zero,signer)]
     pub data_account:  Account<'info, Stream>,
     #[account(
         init,
