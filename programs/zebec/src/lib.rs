@@ -12,10 +12,23 @@ pub const PREFIX: &str = "withdraw_sol";
 pub const PREFIX_TOKEN: &str = "withdraw_token";
 pub const PREFIXMULTISIG: &str = "withdraw_multisig_sol";
 pub const PREFIXMULTISIGSAFE: &str = "multisig_safe";
-pub const FEERECEIVER: &str ="EsDV3m3xUZ7g8QKa1kFdbZT18nNz8ddGJRcTK84WDQ7k";
+pub const OPERATE: &str ="NewVaultOption";
+pub const OPERATEDATA: &str ="NewVaultOptionData";
+
 #[program]
+
 mod zebec {
     use super::*;
+    pub fn create_set(
+        ctx:Context<SetCreate>,
+        fee_percentage:u64
+    )->Result<()>{
+        let data_create = &mut ctx.accounts.create_set_data;
+        data_create.owner=ctx.accounts.owner.key();
+        data_create.vault_address=ctx.accounts.fee_vault.key();
+        data_create.fee_percentage=fee_percentage;
+        Ok(())
+    }
     pub fn deposit_sol(
         ctx: Context<InitializeMasterPda>,
         amount: u64
@@ -416,11 +429,28 @@ pub struct TokenWithdrawStream<'info> {
     #[account()]
     /// CHECK:
     pub source_account: AccountInfo<'info>,
-    #[account(mut,
-        constraint= fee_receiver.key()==Pubkey::from_str(FEERECEIVER).unwrap()
+
+    pub fee_owner:AccountInfo<'info>,
+
+    #[account(
+        seeds = [
+            fee_owner.key().as_ref(),
+            OPERATEDATA.as_bytes(),
+            fee_vault.key().as_ref(),
+        ],bump
     )]
-    /// CHECK:
-    pub fee_receiver:AccountInfo<'info>,
+    pub create_set_data: Account<'info,CreateSet>,
+
+    #[account(
+        constraint = create_set_data.owner == fee_owner.key(),
+        seeds = [
+            fee_owner.key().as_ref(),
+            OPERATE.as_bytes(),           
+        ],bump,        
+    )]
+    pub fee_vault:AccountInfo<'info>,
+    /// CHECK
+   
     //data account
     #[account(mut,
             owner=id(),
@@ -462,7 +492,7 @@ pub struct TokenWithdrawStream<'info> {
         init_if_needed,
         payer = dest_account,
         associated_token::mint = mint,
-        associated_token::authority = fee_receiver,
+        associated_token::authority = fee_vault,
     )]
     fee_reciever_token_account: Box<Account<'info, TokenAccount>>,
 }
@@ -483,6 +513,34 @@ pub struct MultisigSafe<'info> {
     pub sender: Signer<'info>,
     #[account(init, payer=sender,signer, space=32*11+8+32)]
     pub data_account:  Account<'info, Multisig>,
+    pub system_program: Program<'info, System>,
+}
+#[derive(Accounts)]
+pub struct SetCreate<'info> {
+    #[account(
+        init,
+        payer=owner,
+        seeds = [
+            owner.key().as_ref(),
+            OPERATE.as_bytes(),           
+        ],bump,
+        space=0,
+    )]
+    pub fee_vault:AccountInfo<'info>,
+    #[account(
+        init,
+        payer=owner,
+        seeds = [
+            owner.key().as_ref(),
+            OPERATEDATA.as_bytes(),
+            fee_vault.key().as_ref(),
+        ],bump,
+        space=8+32+32+8,
+    )]
+    /// CHECK
+    pub create_set_data: Account<'info,CreateSet>,
+    #[account(mut)]
+    pub owner: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 #[account]
@@ -529,6 +587,13 @@ pub struct StreamToken {
             ) as u64 
         }
     }
+#[account]
+pub struct CreateSet
+{
+    pub vault_address:Pubkey,
+    pub owner:Pubkey,
+    pub fee_percentage:u64,
+}    
 #[account]
 pub struct TokenWithdraw {
     pub amount: u64
