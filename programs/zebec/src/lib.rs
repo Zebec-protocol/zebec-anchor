@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token::{Mint, Token, TokenAccount, Transfer}};
-use std::{convert::Into,str::FromStr};
 declare_id!("3svmYpJGih9yxkgqpExNdQZLKQ7Wu5SEjaVUbmbytUJg");
 
 pub mod utils;
@@ -26,7 +25,9 @@ mod zebec {
         let data_create = &mut ctx.accounts.create_set_data;
         data_create.owner=ctx.accounts.owner.key();
         data_create.vault_address=ctx.accounts.fee_vault.key();
-        data_create.fee_percentage=fee_percentage;
+        //for 0.25 % fee percentage should be sent 25
+        //which is divided by 10000 to get 0.25%
+        data_create.fee_percentage=fee_percentage; 
         Ok(())
     }
     pub fn deposit_sol(
@@ -174,7 +175,7 @@ mod zebec {
             msg!("{:?} is your withdraw limit",escrow.withdraw_limit);
             return Err(ProgramError::InsufficientFunds.into());
         }
-        let comission: u64 = 25*amount/10000; 
+        let comission: u64 = ctx.accounts.create_set_data.fee_percentage*amount/10000; 
         let receiver_amount:u64=amount-comission;
 
         //data_account signer seeds
@@ -334,6 +335,7 @@ pub struct Withdraw<'info> {
         constraint = data_account.sender == sender.key()
     )]
     pub data_account:  Account<'info, Stream>,
+    
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
@@ -429,7 +431,7 @@ pub struct TokenWithdrawStream<'info> {
     #[account()]
     /// CHECK:
     pub source_account: AccountInfo<'info>,
-
+    /// CHECK:
     pub fee_owner:AccountInfo<'info>,
 
     #[account(
@@ -448,8 +450,8 @@ pub struct TokenWithdrawStream<'info> {
             OPERATE.as_bytes(),           
         ],bump,        
     )]
+    /// CHECK:
     pub fee_vault:AccountInfo<'info>,
-    /// CHECK
    
     //data account
     #[account(mut,
@@ -526,6 +528,7 @@ pub struct SetCreate<'info> {
         ],bump,
         space=0,
     )]
+    /// CHECK:
     pub fee_vault:AccountInfo<'info>,
     #[account(
         init,
@@ -537,7 +540,7 @@ pub struct SetCreate<'info> {
         ],bump,
         space=8+32+32+8,
     )]
-    /// CHECK
+    /// CHECK:
     pub create_set_data: Account<'info,CreateSet>,
     #[account(mut)]
     pub owner: Signer<'info>,
