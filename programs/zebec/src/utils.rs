@@ -41,6 +41,25 @@ pub fn create_transfer_signed<'a>(
 
     Ok(())
 }
+pub fn create_transfer_token<'a>
+(
+ token_program:AccountInfo<'a>,
+ sender:    AccountInfo<'a>,
+ receiver:  AccountInfo<'a>,
+ authority: AccountInfo<'a>,
+ receiver_amount: u64,
+) -> Result<()> {
+    let transfer_instruction = Transfer{
+        from: sender,
+        to: receiver,
+        authority: authority,
+    };
+    let cpi_ctx = CpiContext::new(token_program, 
+                                transfer_instruction,);
+    anchor_spl::token::transfer(cpi_ctx, receiver_amount)?;
+
+    Ok(())
+}
 pub fn create_transfer_token_signed<'a>
 (
  token_program:AccountInfo<'a>,

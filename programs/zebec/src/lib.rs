@@ -1,10 +1,10 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{associated_token::AssociatedToken, token::{Mint, Token, TokenAccount, Transfer}};
+use anchor_spl::{associated_token::AssociatedToken, token::{Mint, Token, TokenAccount,}};
 declare_id!("3svmYpJGih9yxkgqpExNdQZLKQ7Wu5SEjaVUbmbytUJg");
 
 pub mod utils;
 pub mod error;
-use crate::{utils::{create_transfer,create_transfer_signed,create_transfer_token_signed},error::ErrorCode};
+use crate::{utils::{create_transfer,create_transfer_signed,create_transfer_token_signed,create_transfer_token},error::ErrorCode};
 
 
 pub const PREFIX: &str = "withdraw_sol";
@@ -224,15 +224,13 @@ mod zebec {
         amount: u64,
     )   ->Result<()>{
         
-        let transfer_instruction = Transfer{
-            from: ctx.accounts.source_account_token_account.to_account_info(),
-            to: ctx.accounts.pda_account_token_account.to_account_info(),
-            authority: ctx.accounts.source_account.to_account_info(),
-        };
-        let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), 
-                                    transfer_instruction);
-
-        anchor_spl::token::transfer(cpi_ctx, amount)?;
+        //transfering tokens
+        create_transfer_token(
+        ctx.accounts.token_program.to_account_info(), 
+        ctx.accounts.source_account_token_account.to_account_info(),
+        ctx.accounts.pda_account_token_account.to_account_info(),
+        ctx.accounts.source_account.to_account_info(), 
+        amount)?;
         Ok(())
     }
     pub fn pause_resume_token_stream(
@@ -265,6 +263,29 @@ mod zebec {
             data_account.withdraw_limit = Some(allowed_amt);
             data_account.paused_at = now;
         }
+        Ok(())
+    }
+    pub fn get_fees_token(
+        ctx: Context<GetFeesToken>,
+        amount:u64,
+    )->Result<()>{
+        //data_account signer seeds
+        let map = ctx.bumps;
+        let (_, bump) = map.iter().next_back().unwrap();
+        let bump=bump.to_be_bytes();            
+        let inner = vec![
+            ctx.accounts.fee_owner.key.as_ref(),
+            OPERATE.as_bytes(), 
+            bump.as_ref(),
+        ];
+        let outer = vec![inner.as_slice()];
+        create_transfer_token_signed(
+            ctx.accounts.token_program.to_account_info(), 
+            ctx.accounts.fee_reciever_vault_token_account.to_account_info(),
+            ctx.accounts.fee_owner_token_account.to_account_info(), 
+            ctx.accounts.fee_vault.to_account_info(), 
+            outer, 
+            amount)?;
         Ok(())
     }
     pub fn create_multisig(
@@ -545,6 +566,52 @@ pub struct SetCreate<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
     pub system_program: Program<'info, System>,
+}
+#[derive(Accounts)]
+#[instruction(amount:u64)]
+pub struct GetFeesToken<'info> {
+    #[account(mut)]
+    pub fee_owner:Signer<'info>,
+    #[account(
+        seeds = [
+            fee_owner.key().as_ref(),
+            OPERATEDATA.as_bytes(),
+            fee_vault.key().as_ref(),
+        ],bump
+    )]
+    pub create_set_data: Account<'info,CreateSet>,
+
+    #[account(mut,
+        constraint = create_set_data.owner == fee_owner.key(),
+        seeds = [
+            fee_owner.key().as_ref(),
+            OPERATE.as_bytes(),           
+        ],bump,        
+    )]
+    /// CHECK:
+    pub fee_vault:AccountInfo<'info>,
+
+      //Program Accounts
+      pub system_program: Program<'info, System>,
+      pub token_program:Program<'info,Token>,
+      pub associated_token_program:Program<'info,AssociatedToken>,
+      pub rent: Sysvar<'info, Rent>,
+      //Mint and Token Accounts
+      pub mint:Account<'info,Mint>,
+      #[account(
+        mut,
+        constraint = fee_reciever_vault_token_account.amount >= amount,
+        associated_token::mint = mint,
+        associated_token::authority = fee_vault,
+    )]
+    fee_reciever_vault_token_account: Box<Account<'info, TokenAccount>>,
+    #[account(
+        init_if_needed,
+        payer = fee_owner,
+        associated_token::mint = mint,
+        associated_token::authority = fee_owner,
+    )]
+    fee_owner_token_account: Box<Account<'info, TokenAccount>>,
 }
 #[account]
 pub struct Stream {
