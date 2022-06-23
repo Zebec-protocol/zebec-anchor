@@ -20,12 +20,20 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
   function delay(ms: number) {
     return new Promise( resolve => setTimeout(resolve, ms) );
 }
-describe('zebec', () => {
-  const sender = anchor.web3.Keypair.generate();
-  let dataAccount = anchor.web3.Keypair.generate();
-  const receiver = anchor.web3.Keypair.generate();
+describe('zebec native', () => {
+  //constants
   const PREFIX = "withdraw_sol"
   const PREFIX_TOKEN= "withdraw_token"
+  const OPERATE="NewVaultOption";
+  const OPERATEDATA="NewVaultOptionData";
+
+  //data account
+  let dataAccount = anchor.web3.Keypair.generate();
+
+  //user accounts
+  const sender = anchor.web3.Keypair.generate();
+  const receiver = anchor.web3.Keypair.generate();
+  const fee_receiver = new anchor.web3.Keypair();
 
   console.log("Sender key: "+sender.publicKey.toBase58())
   console.log("Receiver key: "+receiver.publicKey.toBase58())
@@ -34,8 +42,29 @@ describe('zebec', () => {
 
   it('Airdrop Solana', async()=>{
     await airdrop_sol(sender.publicKey)
+    await airdrop_sol(fee_receiver.publicKey)
   })
+  it('Create Set Vault',async()=>{
+    const [fee_vault ,_un]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+    anchor.utils.bytes.utf8.encode(OPERATE),], program.programId)
+    const [create_set_data ,_]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+      anchor.utils.bytes.utf8.encode(OPERATEDATA),fee_vault.toBuffer()], program.programId)
 
+    const fee_percentage=new anchor.BN(25)
+    const tx = await program.rpc.createVault(fee_percentage,{
+      accounts:{
+        feeVault: fee_vault,
+        createVaultData: create_set_data,
+        owner: fee_receiver.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        rent:anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+      signers:[fee_receiver],
+      instructions:[],
+  });
+  console.log("Your signature is ", tx);
+  }
+  )
   it('Deposit Sol', async () => {
     const [zebecVault, bumps]= await PublicKey.findProgramAddress([
       sender.publicKey.toBuffer()], program.programId
@@ -53,11 +82,15 @@ describe('zebec', () => {
     });
     console.log("Your transaction signature", tx);
   });
-
   it('Stream Sol', async () => {
     const [withdraw_data, _]= await PublicKey.findProgramAddress([
       anchor.utils.bytes.utf8.encode(PREFIX),sender.publicKey.toBuffer()], program.programId
     )
+    const [fee_vault ,_un]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+      anchor.utils.bytes.utf8.encode(OPERATE),], program.programId)
+    const [create_set_data ,_non]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+        anchor.utils.bytes.utf8.encode(OPERATEDATA),fee_vault.toBuffer()], program.programId)
+
     let now = Math.floor(new Date().getTime() / 1000)
     const startTime = new anchor.BN(now-1000) 
     const paused = new anchor.BN(now) 
@@ -68,14 +101,14 @@ describe('zebec', () => {
       accounts:{
         dataAccount: dataAccount.publicKey,
         withdrawData: withdraw_data,
+        feeOwner:fee_receiver.publicKey,
+        createVaultData:create_set_data,
+        feeVault:fee_vault,
         systemProgram: anchor.web3.SystemProgram.programId,
         sender: sender.publicKey,
         receiver:receiver.publicKey
       },
       signers:[sender,dataAccount],
-      instructions:[
-        // await program.account.stream.createInstruction(sender,2000),
-      ],
     });
     console.log("Your transaction signature", tx);
   });
@@ -86,6 +119,11 @@ describe('zebec', () => {
     const [zebecVault, bumps]= await PublicKey.findProgramAddress([
       sender.publicKey.toBuffer()], program.programId
     )
+    const [fee_vault ,_un]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+      anchor.utils.bytes.utf8.encode(OPERATE),], program.programId)
+    const [create_set_data ,_non]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+        anchor.utils.bytes.utf8.encode(OPERATEDATA),fee_vault.toBuffer()], program.programId)
+
     console.log("MasterPda "+zebecVault);
     console.log("withdraw_data "+withdraw_data);
       
@@ -95,11 +133,12 @@ describe('zebec', () => {
         sender: sender.publicKey,
         receiver:receiver.publicKey,
         dataAccount:dataAccount.publicKey,
+        feeOwner:fee_receiver.publicKey,
+        createVaultData:create_set_data,
+        feeVault:fee_vault,
         systemProgram: anchor.web3.SystemProgram.programId,
       },
       signers:[receiver],
-      instructions:[
-      ],
     });
     console.log("Your transaction signature", tx);
   });
@@ -141,6 +180,26 @@ describe('zebec', () => {
     });
     console.log("Your transaction signature", tx);
   });
+  it('Retrieve Fees',async()=>{
+    const [fee_vault ,_un]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+    anchor.utils.bytes.utf8.encode(OPERATE),], program.programId)
+    const [create_set_data ,_]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+    anchor.utils.bytes.utf8.encode(OPERATEDATA),fee_vault.toBuffer()], program.programId)
+
+    const tx = await program.rpc.withdrawFeesSol({
+      accounts:{
+        feeOwner: fee_receiver.publicKey,
+        createVaultData: create_set_data,
+        feeVault: fee_vault,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        rent:anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+      signers:[fee_receiver],
+      instructions:[],
+  });
+  console.log("Your signature is ", tx);
+  }
+  )
   it('Create Multisig', async () => {
     const [withdraw_data, _]= await PublicKey.findProgramAddress([
       anchor.utils.bytes.utf8.encode(PREFIX),sender.publicKey.toBuffer()], program.programId
@@ -172,16 +231,21 @@ describe('zebec', () => {
   });
 
 describe('zebec token', () => {
+  //program id
     const program = new anchor.Program(idl, programId);
-    const sender = anchor.web3.Keypair.generate();
-    const dataAccount = anchor.web3.Keypair.generate();
-    const receiver = anchor.web3.Keypair.generate();
-    const PREFIX = "withdraw_sol"
+  //constant strings
     const PREFIX_TOKEN= "withdraw_token"
+    const OPERATE="NewVaultOption";
+    const OPERATEDATA="NewVaultOptionData";
+  //data account
+    const dataAccount = anchor.web3.Keypair.generate();
+  //token mint
+    const tokenMint = new anchor.web3.Keypair();
+  //users account
     const user =  anchor.web3.Keypair.generate();
     const dest =  anchor.web3.Keypair.generate();
-    const tokenMint = new anchor.web3.Keypair();
-    const fee_receiver = new anchor.web3.PublicKey("EsDV3m3xUZ7g8QKa1kFdbZT18nNz8ddGJRcTK84WDQ7k")
+    const fee_receiver = new anchor.web3.Keypair();
+    
 
     const createMint = async (connection: anchor.web3.Connection): Promise<anchor.web3.PublicKey> => {
       const lamportsForMint = await provider.connection.getMinimumBalanceForRentExemption(spl.MintLayout.span);
@@ -255,22 +319,52 @@ describe('zebec token', () => {
     it('Airdrop Solana', async()=>{
       await airdrop_sol(user.publicKey)
       await airdrop_sol(dest.publicKey)
+      await airdrop_sol(fee_receiver.publicKey)
     })
+    it('Create Set Vault',async()=>{
+      const [fee_vault ,_un]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+      anchor.utils.bytes.utf8.encode(OPERATE),], program.programId)
+      const [create_set_data ,_]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+        anchor.utils.bytes.utf8.encode(OPERATEDATA),fee_vault.toBuffer()], program.programId)
+  
+      const fee_percentage=new anchor.BN(25)
+      const tx = await program.rpc.createVault(fee_percentage,{
+        accounts:{
+          feeVault: fee_vault,
+          createVaultData: create_set_data,
+          owner: fee_receiver.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          rent:anchor.web3.SYSVAR_RENT_PUBKEY,
+        },
+        signers:[fee_receiver],
+        instructions:[],
+    });
+    console.log("Your signature for create vault is ", tx);
+    }
+    )
     it('Token Stream',async()=>{
       const mint = await createMint(provider.connection);
       console.log("The mint is %s",mint.toBase58())
       console.log("The data account is %s",dataAccount.publicKey.toBase58())
       const [withdraw_data, _]= await PublicKey.findProgramAddress([
       anchor.utils.bytes.utf8.encode(PREFIX_TOKEN),user.publicKey.toBuffer(),mint.toBuffer()], program.programId)
+      const [fee_vault ,_un]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+        anchor.utils.bytes.utf8.encode(OPERATE),], program.programId)
+      const [create_set_data ,_non]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+          anchor.utils.bytes.utf8.encode(OPERATEDATA),fee_vault.toBuffer()], program.programId)
+  
       let now = Math.floor(new Date().getTime() / 1000)
       const startTime = new anchor.BN(now-1000) 
-      const endTime=new anchor.BN(now+200)
-      const withdrawLimit=new anchor.BN(1000)
-      const amount=new anchor.BN(1000)
+      const endTime=new anchor.BN(now+2000)
+      const withdrawLimit=new anchor.BN(1000000)
+      const amount=new anchor.BN(1000000)
       const tx = await program.rpc.tokenStream(startTime,endTime,amount,withdrawLimit,{
         accounts:{
           dataAccount: dataAccount.publicKey,
           withdrawData: withdraw_data,
+          feeOwner:fee_receiver.publicKey,
+          createVaultData:create_set_data,
+          feeVault:fee_vault,
           sourceAccount: user.publicKey,
           destAccount:dest.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
@@ -281,7 +375,7 @@ describe('zebec token', () => {
         signers:[user,dataAccount],
         instructions:[],
     });
-    console.log("Your signature is ", tx);
+    console.log("Your transaction for token stream signature", tx);
     }
     )
     it('Token Deposit',async()=>{
@@ -314,7 +408,7 @@ describe('zebec token', () => {
         signers:[user,],
         instructions:[],
     });
-    console.log("Your signature is ", tx);
+    console.log("Your transaction for deposit token signature", tx);
     }
     )
     it('Pause Stream Token', async () => {
@@ -328,7 +422,7 @@ describe('zebec token', () => {
         instructions:[
         ],
       });
-      console.log("Your transaction signature", tx);
+      console.log("Your transaction for pause token stream signature", tx);
     });
     it('Resume Stream Token', async () => {
       const tx = await program.rpc.pauseResumeTokenStream({
@@ -341,7 +435,7 @@ describe('zebec token', () => {
         instructions:[
         ],
       });
-      console.log("Your transaction signature", tx);
+      console.log("Your transaction for resume token stream signature", tx);
     });  
     it('Withdraw Token Stream',async()=>{
   
@@ -350,7 +444,11 @@ describe('zebec token', () => {
         user.publicKey.toBuffer(),], program.programId);
       const [withdraw_data, _b]= await PublicKey.findProgramAddress([
         anchor.utils.bytes.utf8.encode(PREFIX_TOKEN),user.publicKey.toBuffer(),tokenMint.publicKey.toBuffer()], program.programId)
-      
+      const [fee_vault ,_un]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+          anchor.utils.bytes.utf8.encode(OPERATE),], program.programId)
+      const [create_set_data ,_non]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+            anchor.utils.bytes.utf8.encode(OPERATEDATA),fee_vault.toBuffer()], program.programId)
+    
       const pda_token_account =await spl.getAssociatedTokenAddress(
           tokenMint.publicKey,
           zebecVault,
@@ -367,17 +465,18 @@ describe('zebec token', () => {
     )
     const fee_token_account =await spl.getAssociatedTokenAddress(
       tokenMint.publicKey,
-      fee_receiver,
+      fee_vault,
       true,
       spl.TOKEN_PROGRAM_ID,
       spl.ASSOCIATED_TOKEN_PROGRAM_ID,
     )
-      const amount=new anchor.BN(100)  
-      const tx = await program.rpc.withdrawTokenStream(amount,{
+      const tx = await program.rpc.withdrawTokenStream({
         accounts:{
           destAccount:dest.publicKey,
           sourceAccount: user.publicKey,
-          feeReceiver:fee_receiver,
+          feeOwner:fee_receiver.publicKey,
+          createVaultData:create_set_data,
+          feeVault:fee_vault,
           zebecVault:zebecVault,
           dataAccount:dataAccount.publicKey,
           withdrawData:withdraw_data,     
@@ -392,8 +491,45 @@ describe('zebec token', () => {
         },
         signers:[dest,],
     });
-    console.log("Your signature for withdraw is ", tx);
+    console.log("Your signature for withdraw token stream is ", tx);
     }
- 
+    )
+    it('Retrieve Fees',async()=>{
+      const [fee_vault ,_un]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+      anchor.utils.bytes.utf8.encode(OPERATE),], program.programId)
+      const [create_set_data ,_]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+        anchor.utils.bytes.utf8.encode(OPERATEDATA),fee_vault.toBuffer()], program.programId)
+        const fee_owner_token_account =await spl.getAssociatedTokenAddress(
+          tokenMint.publicKey,
+          fee_receiver.publicKey,
+          true,
+          spl.TOKEN_PROGRAM_ID,
+          spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+      )
+      const fee_vault_token_account =await spl.getAssociatedTokenAddress(
+        tokenMint.publicKey,
+        fee_vault,
+        true,
+        spl.TOKEN_PROGRAM_ID,
+        spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+      )
+      const tx = await program.rpc.withdrawFeesToken({
+        accounts:{
+          feeOwner: fee_receiver.publicKey,
+          createVaultData: create_set_data,
+          feeVault: fee_vault,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram:spl.TOKEN_PROGRAM_ID,
+          associatedTokenProgram:spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+          rent:anchor.web3.SYSVAR_RENT_PUBKEY,
+          mint:tokenMint.publicKey,
+          feeRecieverVaultTokenAccount:fee_vault_token_account,
+          feeOwnerTokenAccount:fee_owner_token_account,
+        },
+        signers:[fee_receiver],
+        instructions:[],
+    });
+    console.log("Your signature for retrieve fees is ", tx);
+    }
     )
   });
