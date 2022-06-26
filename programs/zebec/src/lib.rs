@@ -9,7 +9,7 @@ use crate::{utils::{create_transfer,create_transfer_signed,create_transfer_token
 
 pub const PREFIX: &str = "withdraw_sol";
 pub const PREFIX_TOKEN: &str = "withdraw_token";
-pub const PREFIXMULTISIG: &str = "withdraw_multisig_sol";
+pub const PREFIXVAULT: &str = "vault";
 pub const PREFIXMULTISIGSAFE: &str = "multisig_safe";
 pub const OPERATE: &str ="NewVaultOption";
 pub const OPERATEDATA: &str ="NewVaultOptionData";
@@ -287,8 +287,9 @@ mod zebec {
 
         Ok(())
     }
-    pub fn create_multisig(
-        ctx: Context<MultisigSafe>,
+
+    pub fn create_vault(
+        ctx: Context<Vault>,
         signers: Vec<Pubkey>,
         m: u64
     ) -> Result<()> {
@@ -318,6 +319,16 @@ pub struct InitializeMasterPda<'info> {
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(init, payer=sender,signer, space=8+8+8+8+8+32+32+8+8+32+200)]
+    #[account(
+        init,
+        payer=withdraw_data,
+        seeds = [
+            sender.key().as_ref(),
+            //todo        
+        ],bump,
+        space=200+1+8,
+    )]
+
     pub data_account:  Account<'info, Stream>,
     #[account(
         init,
@@ -586,13 +597,13 @@ pub struct TokenWithdrawStream<'info> {
     fee_reciever_token_account: Box<Account<'info, TokenAccount>>,
 }
 #[derive(Accounts)]
-pub struct MultisigSafe<'info> {
+pub struct Vault<'info> {
     #[account(
         init,
         payer=sender,
         seeds = [
-            PREFIXMULTISIG.as_bytes(),
-            data_account.key().as_ref(),
+            PREFIXVAULT.as_bytes(),
+            sender.key().as_ref(),
         ],bump,
         space=200+1+8,
     )]
@@ -727,7 +738,8 @@ impl Stream {
 }
 #[account]
 pub struct StreamedAmt {
-    pub amount: u64
+    pub amount: u64,
+    pub counter: u8
 }
 
 #[account]

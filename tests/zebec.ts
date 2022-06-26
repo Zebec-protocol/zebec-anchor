@@ -95,11 +95,12 @@ describe('zebec native', () => {
     const startTime = new anchor.BN(now-1000) 
     const paused = new anchor.BN(now) 
     const endTime=new anchor.BN(now+3600)
-    console.log("Time: "+endTime.toString())
     const amount=new anchor.BN(1000)
+    let pda = anchor.web3.Keypair.generate();
+
     const tx = await program.rpc.nativeStream(startTime,endTime,amount,{
       accounts:{
-        dataAccount: dataAccount.publicKey,
+        pda: pda.publicKey,
         withdrawData: withdraw_data,
         feeOwner:fee_receiver.publicKey,
         createVaultData:create_set_data,
@@ -109,6 +110,9 @@ describe('zebec native', () => {
         receiver:receiver.publicKey
       },
       signers:[sender,dataAccount],
+      instructions:[
+        await program.account.pda.createInstruction(pda,3000),
+      ],
     });
     console.log("Your transaction signature", tx);
   });
@@ -232,6 +236,10 @@ describe('zebec native', () => {
 
 describe('zebec token', () => {
   //program id
+  });
+
+  describe('zebec token', () => {
+
     const program = new anchor.Program(idl, programId);
   //constant strings
     const PREFIX_TOKEN= "withdraw_token"
@@ -273,8 +281,8 @@ describe('zebec token', () => {
       const signature = await provider.send(tx, [tokenMint]);
       console.log(`[${tokenMint.publicKey}] Created new mint account at ${signature}`);
       return tokenMint.publicKey;
-    }
-    const createUserAndAssociatedWallet = async (connection: anchor.web3.Connection, mint?: anchor.web3.PublicKey): Promise<anchor.web3.PublicKey | undefined> => {
+  }
+  const createUserAndAssociatedWallet = async (connection: anchor.web3.Connection, mint?: anchor.web3.PublicKey): Promise<anchor.web3.PublicKey | undefined> => {
     let userAssociatedTokenAccount: anchor.web3.PublicKey | undefined = undefined;
     // Fund user with some SOL
     let txFund = new anchor.web3.Transaction();
@@ -437,10 +445,9 @@ describe('zebec token', () => {
       });
       console.log("Your transaction for resume token stream signature", tx);
     });  
+
     it('Withdraw Token Stream',async()=>{
-  
-      const connection = new Connection("http://localhost:8899", "confirmed");
-       const [zebecVault, _]= await PublicKey.findProgramAddress([
+         const [zebecVault, _]= await PublicKey.findProgramAddress([
         user.publicKey.toBuffer(),], program.programId);
       const [withdraw_data, _b]= await PublicKey.findProgramAddress([
         anchor.utils.bytes.utf8.encode(PREFIX_TOKEN),user.publicKey.toBuffer(),tokenMint.publicKey.toBuffer()], program.programId)
@@ -530,6 +537,7 @@ describe('zebec token', () => {
         instructions:[],
     });
     console.log("Your signature for retrieve fees is ", tx);
+    await delay(10);
     }
     )
   });
