@@ -1,21 +1,35 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{associated_token::AssociatedToken, token::{Mint, Token, TokenAccount, Transfer}};
-use std::{convert::Into,str::FromStr};
+use anchor_spl::{associated_token::AssociatedToken, token::{Mint, Token, TokenAccount,}};
 declare_id!("3svmYpJGih9yxkgqpExNdQZLKQ7Wu5SEjaVUbmbytUJg");
 
 pub mod utils;
 pub mod error;
-use crate::{utils::{create_transfer,create_transfer_signed,create_transfer_token_signed},error::ErrorCode};
+use crate::{utils::{create_transfer,create_transfer_signed,create_transfer_token_signed,create_transfer_token},error::ErrorCode};
 
 
 pub const PREFIX: &str = "withdraw_sol";
 pub const PREFIX_TOKEN: &str = "withdraw_token";
 pub const PREFIXVAULT: &str = "vault";
 pub const PREFIXMULTISIGSAFE: &str = "multisig_safe";
-pub const FEERECEIVER: &str ="EsDV3m3xUZ7g8QKa1kFdbZT18nNz8ddGJRcTK84WDQ7k";
+pub const OPERATE: &str ="NewVaultOption";
+pub const OPERATEDATA: &str ="NewVaultOptionData";
+
 #[program]
+
 mod zebec {
     use super::*;
+    pub fn create_vault(
+        ctx:Context<SetCreate>,
+        fee_percentage:u64
+    )->Result<()>{
+        let data_create = &mut ctx.accounts.create_vault_data;
+        data_create.owner=ctx.accounts.owner.key();
+        data_create.vault_address=ctx.accounts.fee_vault.key();
+        //for 0.25 % fee percentage should be sent 25
+        //which is divided by 10000 to get 0.25%
+        data_create.fee_percentage=fee_percentage; 
+        Ok(())
+    }
     pub fn deposit_sol(
         ctx: Context<InitializeMasterPda>,
         amount: u64
@@ -43,8 +57,9 @@ mod zebec {
         data_account.paused = 0;
         data_account.amount = amount;
         data_account.withdraw_limit = 0;
-        data_account.sender = *ctx.accounts.sender.to_account_info().key;
-        data_account.receiver = *ctx.accounts.receiver.to_account_info().key;
+        data_account.sender = ctx.accounts.sender.key();
+        data_account.receiver = ctx.accounts.receiver.key();
+        data_account.fee_owner=ctx.accounts.fee_owner.key();
         Ok(())
     }
     pub fn withdraw_stream(
@@ -68,7 +83,13 @@ mod zebec {
         if data_account.paused == 1 && allowed_amt > data_account.withdraw_limit {
                     return Err(ErrorCode::InsufficientFunds.into());
         }
-        create_transfer_signed(ctx.accounts.zebec_vault.to_account_info(),ctx.accounts.receiver.to_account_info(),allowed_amt)?;
+        let comission: u64 = ctx.accounts.create_vault_data.fee_percentage*allowed_amt/10000; 
+        let receiver_amount:u64=allowed_amt-comission;
+        //receiver amount
+        create_transfer_signed(ctx.accounts.zebec_vault.to_account_info(),ctx.accounts.receiver.to_account_info(),receiver_amount)?;
+        //commission
+        create_transfer_signed(ctx.accounts.zebec_vault.to_account_info(),ctx.accounts.fee_vault.to_account_info(),comission)?;
+
         data_account.withdrawn= data_account.withdrawn.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
         if data_account.withdrawn == data_account.amount { 
             create_transfer(data_account.to_account_info(),ctx.accounts.sender.to_account_info(),system.to_account_info(),data_account.to_account_info().lamports())?;
@@ -123,46 +144,43 @@ mod zebec {
             return Err(ErrorCode::InvalidInstruction.into());
         }
         ctx.accounts.withdraw_data.amount=amount;
-        let escrow =&mut ctx.accounts.data_account;
-        escrow.start_time = start_time;
-        escrow.end_time = end_time;
-        escrow.paused = 0;
-        escrow.withdraw_limit = withdraw_limit;
-        escrow.sender = *ctx.accounts.source_account.key;
-        escrow.receiver = *ctx.accounts.dest_account.key;
-        escrow.amount = amount;
-        escrow.token_mint = ctx.accounts.mint.key();
-        escrow.withdrawn = 0;
-        escrow.paused_at = 0;
+        let data_account =&mut ctx.accounts.data_account;
+        data_account.start_time = start_time;
+        data_account.end_time = end_time;
+        data_account.paused = 0;
+        data_account.withdraw_limit = withdraw_limit;
+        data_account.sender = *ctx.accounts.source_account.key;
+        data_account.receiver = *ctx.accounts.dest_account.key;
+        data_account.amount = amount;
+        data_account.token_mint = ctx.accounts.mint.key();
+        data_account.withdrawn = 0;
+        data_account.paused_at = 0;
+        data_account.fee_owner= ctx.accounts.fee_owner.key();
         Ok(())
         }
     pub fn withdraw_token_stream(
         ctx: Context<TokenWithdrawStream>,
-        amount: u64,
     )   ->Result<()>{
-        let escrow =&mut ctx.accounts.data_account;
+        let data_account =&mut ctx.accounts.data_account;
+        let vault_token_account=&mut ctx.accounts.pda_account_token_account;
         let now = Clock::get()?.unix_timestamp as u64;
-        if now <= escrow.start_time {
+        if now <= data_account.start_time {
             msg!("Stream has not been started");
             return Err(ErrorCode::StreamNotStarted.into());
         }
-            // Recipient can only withdraw the money that is already streamed. 
-            let mut allowed_amt = escrow.allowed_amt(now);
-            if now >= escrow.end_time {
-                allowed_amt = escrow.amount;
-            }
-            allowed_amt -=  escrow.withdrawn;
-            if amount>allowed_amt {
-            msg!("{} is not yet streamed.",amount);
+        let mut allowed_amt = data_account.allowed_amt(now);
+        if now >= data_account.end_time {
+            allowed_amt = data_account.amount;
+        }
+        allowed_amt = allowed_amt.checked_sub(data_account.withdrawn).ok_or(ErrorCode::AlreadyWithdrawnStreamingAmount)?;
+        if allowed_amt > vault_token_account.amount{
             return Err(ErrorCode::InsufficientFunds.into());
         }
-        msg!("{}",amount);
-        if escrow.paused == 1 && Some(amount) > escrow.withdraw_limit {
-            msg!("{:?} is your withdraw limit",escrow.withdraw_limit);
-            return Err(ProgramError::InsufficientFunds.into());
-        }
-        let comission: u64 = 25*amount/10000; 
-        let receiver_amount:u64=amount-comission;
+        if data_account.paused == 1 && Some(allowed_amt) > data_account.withdraw_limit {
+            return Err(ErrorCode::InsufficientFunds.into());
+        }       
+        let comission: u64 = ctx.accounts.create_vault_data.fee_percentage*allowed_amt/10000; 
+        let receiver_amount:u64=allowed_amt-comission;
 
         //data_account signer seeds
         let map = ctx.bumps;
@@ -188,21 +206,10 @@ mod zebec {
                                         outer,
                                         comission)?;  
 
-        if escrow.paused == 1{
-            msg!("{:?}{}",escrow.withdraw_limit,amount);
-            let mut tmp =escrow.withdraw_limit.unwrap();
-            tmp=tmp-amount;
-            escrow.withdraw_limit=Some(tmp);
-        }
-        escrow.withdrawn += amount;
-        if escrow.withdrawn == escrow.amount { 
-            let dest_starting_lamports = ctx.accounts.source_account.lamports();
-            **ctx.accounts.source_account.lamports.borrow_mut() = dest_starting_lamports
-                .checked_add(ctx.accounts.data_account.to_account_info().lamports())
-                .ok_or(ErrorCode::Overflow)?;
-            **ctx.accounts.data_account.to_account_info().lamports.borrow_mut() = 0;
-        }
-        ctx.accounts.withdraw_data.amount-=amount;
+        data_account.withdrawn= data_account.withdrawn.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
+        if data_account.withdrawn == data_account.amount { 
+                create_transfer(data_account.to_account_info(),ctx.accounts.source_account.to_account_info(),ctx.accounts.system_program.to_account_info(),data_account.to_account_info().lamports())?;
+        }       
         Ok(())
     }
     pub fn deposit_token(
@@ -210,15 +217,13 @@ mod zebec {
         amount: u64,
     )   ->Result<()>{
         
-        let transfer_instruction = Transfer{
-            from: ctx.accounts.source_account_token_account.to_account_info(),
-            to: ctx.accounts.pda_account_token_account.to_account_info(),
-            authority: ctx.accounts.source_account.to_account_info(),
-        };
-        let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), 
-                                    transfer_instruction);
-
-        anchor_spl::token::transfer(cpi_ctx, amount)?;
+        //transfering tokens
+        create_transfer_token(
+        ctx.accounts.token_program.to_account_info(), 
+        ctx.accounts.source_account_token_account.to_account_info(),
+        ctx.accounts.pda_account_token_account.to_account_info(),
+        ctx.accounts.source_account.to_account_info(), 
+        amount)?;
         Ok(())
     }
     pub fn pause_resume_token_stream(
@@ -253,6 +258,36 @@ mod zebec {
         }
         Ok(())
     }
+    pub fn withdraw_fees_token(
+        ctx: Context<WithdrawFeesToken>,
+    )->Result<()>{
+        //data_account signer seeds
+        let map = ctx.bumps;
+        let (_, bump) = map.iter().next_back().unwrap();
+        let bump=bump.to_be_bytes();            
+        let inner = vec![
+            ctx.accounts.fee_owner.key.as_ref(),
+            OPERATE.as_bytes(), 
+            bump.as_ref(),
+        ];
+        let outer = vec![inner.as_slice()];
+        create_transfer_token_signed(
+            ctx.accounts.token_program.to_account_info(), 
+            ctx.accounts.fee_reciever_vault_token_account.to_account_info(),
+            ctx.accounts.fee_owner_token_account.to_account_info(), 
+            ctx.accounts.fee_vault.to_account_info(), 
+            outer, 
+            ctx.accounts.fee_reciever_vault_token_account.amount)?;
+        Ok(())
+    }
+    pub fn withdraw_fees_sol(
+        ctx: Context<WithdrawFeesSol>,
+    )->Result<()>{
+        create_transfer_signed(ctx.accounts.fee_vault.to_account_info(),ctx.accounts.fee_owner.to_account_info(),ctx.accounts.fee_vault.lamports())?;
+
+        Ok(())
+    }
+
     pub fn create_vault(
         ctx: Context<Vault>,
         signers: Vec<Pubkey>,
@@ -283,6 +318,7 @@ pub struct InitializeMasterPda<'info> {
 }
 #[derive(Accounts)]
 pub struct Initialize<'info> {
+    #[account(init, payer=sender,signer, space=8+8+8+8+8+32+32+8+8+32+200)]
     #[account(
         init,
         payer=withdraw_data,
@@ -304,9 +340,30 @@ pub struct Initialize<'info> {
         space=200+1+8,
     )]
     pub withdraw_data: Account<'info, StreamedAmt>,
+     /// CHECK:
+    pub fee_owner:AccountInfo<'info>,
+    #[account(
+         seeds = [
+             fee_owner.key().as_ref(),
+             OPERATEDATA.as_bytes(),
+             fee_vault.key().as_ref(),
+         ],bump
+     )]
+    pub create_vault_data: Account<'info,CreateVault>,
+ 
+    #[account(
+         constraint = create_vault_data.owner == fee_owner.key(),
+         constraint = create_vault_data.vault_address == fee_vault.key(),
+         seeds = [
+             fee_owner.key().as_ref(),
+             OPERATE.as_bytes(),           
+         ],bump,        
+     )]
+    /// CHECK:
+    pub fee_vault:AccountInfo<'info>,
     #[account(mut)]
     pub sender: Signer<'info>,
-     /// CHECK: test
+    /// CHECK: test
     pub receiver: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -327,9 +384,34 @@ pub struct Withdraw<'info> {
     pub receiver: Signer<'info>,
     #[account(mut,
         constraint = data_account.receiver == receiver.key(),
-        constraint = data_account.sender == sender.key()
+        constraint = data_account.sender == sender.key(),
+        constraint= data_account.fee_owner==fee_owner.key(), 
     )]
     pub data_account:  Account<'info, Stream>,
+    
+    /// CHECK:
+    pub fee_owner:AccountInfo<'info>,
+
+    #[account(
+        seeds = [
+            fee_owner.key().as_ref(),
+            OPERATEDATA.as_bytes(),
+            fee_vault.key().as_ref(),
+        ],bump
+    )]
+    pub create_vault_data: Account<'info,CreateVault>,
+
+    #[account(
+        constraint = create_vault_data.owner == fee_owner.key(),
+        constraint = create_vault_data.vault_address == fee_vault.key(),
+        seeds = [
+            fee_owner.key().as_ref(),
+            OPERATE.as_bytes(),           
+        ],bump,        
+    )]
+    /// CHECK:
+    pub fee_vault:AccountInfo<'info>,
+   
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
@@ -343,10 +425,9 @@ pub struct Pause<'info> {
     )]
     pub data_account:  Account<'info, Stream>,
 }
-
 #[derive(Accounts)]
 pub struct TokenStream<'info> {
-    #[account(init,payer=source_account, space=20+8+8+8+8+8+32+32+32+8+8)]
+    #[account(init,payer=source_account, space=20+8+8+8+8+8+32+32+32+8+8+32)]
     pub data_account:  Account<'info, StreamToken>,
     #[account(
         init,
@@ -359,6 +440,27 @@ pub struct TokenStream<'info> {
         space=20+1,
     )]
     pub withdraw_data: Account<'info, TokenWithdraw>,
+    /// CHECK:
+    pub fee_owner:AccountInfo<'info>,
+    #[account(
+        seeds = [
+            fee_owner.key().as_ref(),
+            OPERATEDATA.as_bytes(),
+            fee_vault.key().as_ref(),
+        ],bump
+    )]
+    pub create_vault_data: Account<'info,CreateVault>,
+
+    #[account(
+        constraint = create_vault_data.owner == fee_owner.key(),
+        constraint = create_vault_data.vault_address == fee_vault.key(),
+        seeds = [
+            fee_owner.key().as_ref(),
+            OPERATE.as_bytes(),           
+        ],bump,        
+    )]
+    /// CHECK:
+    pub fee_vault:AccountInfo<'info>,
     #[account(mut)]
     pub source_account: Signer<'info>,
     /// CHECK:
@@ -412,7 +514,7 @@ pub struct TokenDeposit<'info> {
 pub struct TokenWithdrawStream<'info> {
 
      //masterPDA
-     #[account(
+    #[account(
         seeds = [
             source_account.key().as_ref(),
         ],bump,
@@ -425,16 +527,35 @@ pub struct TokenWithdrawStream<'info> {
     #[account()]
     /// CHECK:
     pub source_account: AccountInfo<'info>,
-    #[account(mut,
-        constraint= fee_receiver.key()==Pubkey::from_str(FEERECEIVER).unwrap()
+    /// CHECK:
+    pub fee_owner:AccountInfo<'info>,
+
+    #[account(
+        seeds = [
+            fee_owner.key().as_ref(),
+            OPERATEDATA.as_bytes(),
+            fee_vault.key().as_ref(),
+        ],bump
+    )]
+    pub create_vault_data: Account<'info,CreateVault>,
+
+    #[account(
+        constraint = create_vault_data.owner == fee_owner.key(),
+        constraint = create_vault_data.vault_address == fee_vault.key(),
+        seeds = [
+            fee_owner.key().as_ref(),
+            OPERATE.as_bytes(),           
+        ],bump,        
     )]
     /// CHECK:
-    pub fee_receiver:AccountInfo<'info>,
+    pub fee_vault:AccountInfo<'info>,
+   
     //data account
     #[account(mut,
             owner=id(),
             constraint= data_account.sender==source_account.key(),
-            constraint= data_account.receiver==dest_account.key(),            
+            constraint= data_account.receiver==dest_account.key(),    
+            constraint= data_account.fee_owner==fee_owner.key(),           
         )]
     pub data_account:  Account<'info, StreamToken>,
     //withdraw data
@@ -471,7 +592,7 @@ pub struct TokenWithdrawStream<'info> {
         init_if_needed,
         payer = dest_account,
         associated_token::mint = mint,
-        associated_token::authority = fee_receiver,
+        associated_token::authority = fee_vault,
     )]
     fee_reciever_token_account: Box<Account<'info, TokenAccount>>,
 }
@@ -494,6 +615,107 @@ pub struct Vault<'info> {
     pub data_account:  Account<'info, Multisig>,
     pub system_program: Program<'info, System>,
 }
+#[derive(Accounts)]
+pub struct SetCreate<'info> {
+    #[account(
+        init,
+        payer=owner,
+        seeds = [
+            owner.key().as_ref(),
+            OPERATE.as_bytes(),           
+        ],bump,
+        space=0,
+    )]
+    /// CHECK:
+    pub fee_vault:AccountInfo<'info>,
+    #[account(
+        init,
+        payer=owner,
+        seeds = [
+            owner.key().as_ref(),
+            OPERATEDATA.as_bytes(),
+            fee_vault.key().as_ref(),
+        ],bump,
+        space=8+32+32+8,
+    )]
+    /// CHECK:
+    pub create_vault_data: Account<'info,CreateVault>,
+    #[account(mut)]
+    pub owner: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+#[derive(Accounts)]
+pub struct WithdrawFeesSol<'info> {
+    #[account(mut)]
+    pub fee_owner:Signer<'info>,
+    #[account(
+        seeds = [
+            fee_owner.key().as_ref(),
+            OPERATEDATA.as_bytes(),
+            fee_vault.key().as_ref(),
+        ],bump
+    )]
+    pub create_vault_data: Account<'info,CreateVault>,
+
+    #[account(mut,
+        constraint = create_vault_data.owner == fee_owner.key(),
+        constraint = create_vault_data.vault_address == fee_vault.key(),
+        seeds = [
+            fee_owner.key().as_ref(),
+            OPERATE.as_bytes(),           
+        ],bump,        
+    )]
+    /// CHECK:
+    pub fee_vault:AccountInfo<'info>,
+      //Program Accounts
+      pub system_program: Program<'info, System>,
+      pub rent: Sysvar<'info, Rent>,
+}
+#[derive(Accounts)]
+pub struct WithdrawFeesToken<'info> {
+    #[account(mut)]
+    pub fee_owner:Signer<'info>,
+    #[account(
+        seeds = [
+            fee_owner.key().as_ref(),
+            OPERATEDATA.as_bytes(),
+            fee_vault.key().as_ref(),
+        ],bump
+    )]
+    pub create_vault_data: Account<'info,CreateVault>,
+
+    #[account(mut,
+        constraint = create_vault_data.owner == fee_owner.key(),
+        constraint = create_vault_data.vault_address == fee_vault.key(),
+        seeds = [
+            fee_owner.key().as_ref(),
+            OPERATE.as_bytes(),           
+        ],bump,        
+    )]
+    /// CHECK:
+    pub fee_vault:AccountInfo<'info>,
+
+    //Program Accounts
+    pub system_program: Program<'info, System>,
+    pub token_program:Program<'info,Token>,
+    pub associated_token_program:Program<'info,AssociatedToken>,
+    pub rent: Sysvar<'info, Rent>,
+    //Mint and Token Accounts
+    pub mint:Account<'info,Mint>,
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = fee_vault,
+    )]
+    fee_reciever_vault_token_account: Box<Account<'info, TokenAccount>>,
+    #[account(
+        init_if_needed,
+        payer = fee_owner,
+        associated_token::mint = mint,
+        associated_token::authority = fee_owner,
+    )]
+    fee_owner_token_account: Box<Account<'info, TokenAccount>>,
+}
 #[account]
 pub struct Stream {
     pub start_time: u64,
@@ -504,7 +726,8 @@ pub struct Stream {
     pub sender:   Pubkey,
     pub receiver: Pubkey,
     pub withdrawn: u64,
-    pub paused_at: u64
+    pub paused_at: u64,
+    pub fee_owner:Pubkey,
 }
 impl Stream {
     pub fn allowed_amt(&self, now: u64) -> u64 {
@@ -531,6 +754,7 @@ pub struct StreamToken {
     pub token_mint: Pubkey,
     pub withdrawn: u64,
     pub paused_at: u64,
+    pub fee_owner:Pubkey,
 }
     impl StreamToken {
         pub fn allowed_amt(&self, now: u64) -> u64 {
@@ -539,6 +763,13 @@ pub struct StreamToken {
             ) as u64 
         }
     }
+#[account]
+pub struct CreateVault
+{
+    pub vault_address:Pubkey,
+    pub owner:Pubkey,
+    pub fee_percentage:u64,
+}    
 #[account]
 pub struct TokenWithdraw {
     pub amount: u64
