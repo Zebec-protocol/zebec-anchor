@@ -284,20 +284,9 @@ mod zebec {
         ctx: Context<WithdrawFeesSol>,
     )->Result<()>{
         create_transfer_signed(ctx.accounts.fee_vault.to_account_info(),ctx.accounts.fee_owner.to_account_info(),ctx.accounts.fee_vault.lamports())?;
-
         Ok(())
     }
 
-    pub fn create_vault(
-        ctx: Context<Vault>,
-        signers: Vec<Pubkey>,
-        m: u64
-    ) -> Result<()> {
-        let data_account = &mut ctx.accounts.data_account;
-        data_account.signers = signers;
-        data_account.m = m;
-        Ok(())
-    } 
 }
 
 #[derive(Accounts)]
@@ -319,16 +308,6 @@ pub struct InitializeMasterPda<'info> {
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(init, payer=sender,signer, space=8+8+8+8+8+32+32+8+8+32+200)]
-    #[account(
-        init,
-        payer=withdraw_data,
-        seeds = [
-            sender.key().as_ref(),
-            //todo        
-        ],bump,
-        space=200+1+8,
-    )]
-
     pub data_account:  Account<'info, Stream>,
     #[account(
         init,

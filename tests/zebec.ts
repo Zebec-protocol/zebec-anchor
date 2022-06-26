@@ -100,7 +100,7 @@ describe('zebec native', () => {
 
     const tx = await program.rpc.nativeStream(startTime,endTime,amount,{
       accounts:{
-        pda: pda.publicKey,
+        dataAccount: dataAccount.publicKey,
         withdrawData: withdraw_data,
         feeOwner:fee_receiver.publicKey,
         createVaultData:create_set_data,
@@ -111,7 +111,7 @@ describe('zebec native', () => {
       },
       signers:[sender,dataAccount],
       instructions:[
-        await program.account.pda.createInstruction(pda,3000),
+        // await program.account.pda.createInstruction(pda,3000),
       ],
     });
     console.log("Your transaction signature", tx);
@@ -127,9 +127,6 @@ describe('zebec native', () => {
       anchor.utils.bytes.utf8.encode(OPERATE),], program.programId)
     const [create_set_data ,_non]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
         anchor.utils.bytes.utf8.encode(OPERATEDATA),fee_vault.toBuffer()], program.programId)
-
-    console.log("MasterPda "+zebecVault);
-    console.log("withdraw_data "+withdraw_data);
       
     const tx = await program.rpc.withdrawStream({
       accounts:{
