@@ -559,7 +559,7 @@ pub struct TokenWithdrawStream<'info> {
         associated_token::mint = mint,
         associated_token::authority = zebec_vault,
     )]
-    pda_account_token_account: Account<'info, TokenAccount>,
+    pda_account_token_account: Box<Account<'info, TokenAccount>>,
     #[account(
         init_if_needed,
         payer = dest_account,
