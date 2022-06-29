@@ -97,24 +97,43 @@ describe('zebec native', () => {
     const endTime=new anchor.BN(now+3600)
     const amount=new anchor.BN(1000)
     let pda = anchor.web3.Keypair.generate();
+    const dataSize = 8+8+8+8+8+32+32+8+8+32+200
+    // let transactionweb3 = new anchor.web3.Transaction();
+    // let rent =await program.provider.connection.getMinimumBalanceForRentExemption(dataSize)
+    // let createZebecDataAccount = transactionweb3.add(anchor.web3.SystemProgram.createAccount(
+    //   {   
+    //       fromPubkey: sender.publicKey,
+    //       lamports: rent,
+    //       newAccountPubkey:dataAccount.publicKey,
+    //       programId:program.programId,
+    //       space:dataSize
+    //     }
+    //   ))
+    try {
+      const tx = await program.rpc.nativeStream(startTime,endTime,amount,{
+        accounts:{
+          dataAccount: dataAccount.publicKey,
+          withdrawData: withdraw_data,
+          feeOwner:fee_receiver.publicKey,
+          createVaultData:create_set_data,
+          feeVault:fee_vault,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          sender: sender.publicKey,
+          receiver:receiver.publicKey
+        },
+        instructions:[
+          await program.account.stream.createInstruction(
+            dataAccount,
+            dataSize
+            ),
+        ],
+        signers:[sender,dataAccount],
+      });
+      console.log("Your transaction signature", tx);
+    } catch (error) {
+      console.log(error)
+    }
 
-    const tx = await program.rpc.nativeStream(startTime,endTime,amount,{
-      accounts:{
-        dataAccount: dataAccount.publicKey,
-        withdrawData: withdraw_data,
-        feeOwner:fee_receiver.publicKey,
-        createVaultData:create_set_data,
-        feeVault:fee_vault,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        sender: sender.publicKey,
-        receiver:receiver.publicKey
-      },
-      signers:[sender,dataAccount],
-      instructions:[
-        // await program.account.pda.createInstruction(pda,3000),
-      ],
-    });
-    console.log("Your transaction signature", tx);
   });
   it('Withdraw Sol', async () => {
     const [withdraw_data, _]= await PublicKey.findProgramAddress([
