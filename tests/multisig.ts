@@ -354,9 +354,9 @@ describe("multisig", () => {
             },
             signers: [ownerB],
           });
-        console.log("Multisig Stream SOl TransactionTransaction Approved by ownerB", approveTx);
+        console.log("Multisig Stream SOl Transaction Approved by ownerB", approveTx);
         // await delay(100000);
-        await program.rpc.executeTransaction({
+        const exeTxn = await program.rpc.executeTransaction({
             accounts: {
               multisig: multisig.publicKey,
               multisigSigner,
@@ -375,6 +375,7 @@ describe("multisig", () => {
             isSigner: false,
             }),
         });
+        console.log("Multisig Stream SOl Transaction executed", exeTxn);
 
     })
     it("Resume stream from multisig", async () => {
@@ -418,7 +419,7 @@ describe("multisig", () => {
             ],
             signers: [transaction, ownerA],
             });
-        console.log("Pause Stream SOl Transaction created ", tx);
+        console.log("Resume Stream SOl Transaction created ", tx);
         const approveTx = await program.rpc.approve({
             accounts: {
               multisig: multisig.publicKey,
@@ -427,9 +428,9 @@ describe("multisig", () => {
             },
             signers: [ownerB],
           });
-        console.log("Multisig Stream SOl TransactionTransaction Approved by ownerB", approveTx);
+        console.log("Resume Stream SOl TransactionTransaction Approved by ownerB", approveTx);
         // await delay(100000);
-        await program.rpc.executeTransaction({
+       const exeTxn = await program.rpc.executeTransaction({
             accounts: {
               multisig: multisig.publicKey,
               multisigSigner,
@@ -448,6 +449,7 @@ describe("multisig", () => {
             isSigner: false,
             }),
         });
+        console.log("Resume Stream SOl Transaction executed", exeTxn);
 
     })
 
