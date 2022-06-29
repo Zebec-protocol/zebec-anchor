@@ -307,8 +307,8 @@ pub struct InitializeMasterPda<'info> {
 }
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(init, payer=sender,signer, space=8+8+8+8+8+32+32+8+8+32+200)]
-    pub data_account:  Account<'info, Stream>,
+    #[account(zero)]
+    pub data_account:  Box<Account<'info, Stream>>,
     #[account(
         init,
         payer=sender,
@@ -318,7 +318,7 @@ pub struct Initialize<'info> {
         ],bump,
         space=200+1+8,
     )]
-    pub withdraw_data: Account<'info, StreamedAmt>,
+    pub withdraw_data: Box<Account<'info, StreamedAmt>>,
      /// CHECK:
     pub fee_owner:AccountInfo<'info>,
     #[account(
@@ -328,7 +328,7 @@ pub struct Initialize<'info> {
              fee_vault.key().as_ref(),
          ],bump
      )]
-    pub create_vault_data: Account<'info,CreateVault>,
+    pub create_vault_data: Box<Account<'info,CreateVault>>,
  
     #[account(
          constraint = create_vault_data.owner == fee_owner.key(),
