@@ -13,6 +13,8 @@ require("fs").readFileSync("./target/idl/zebec.json", "utf8")
 );
 const program = anchor.workspace.SerumMultisig;
 const programZebec = new anchor.Program(idl, programId);
+const pid = programZebec.programId
+
 // Accounts
 const multisig = anchor.web3.Keypair.generate();
 const ownerA = anchor.web3.Keypair.generate();
@@ -46,6 +48,9 @@ async function airdrop_sol(wallet_address: PublicKey){
     const signature = program.provider.connection.requestAirdrop(wallet_address, LAMPORTS_PER_SOL)
     const tx = await program.provider.connection.confirmTransaction(await signature);
     console.log("Your transaction signature", signature);
+}
+function delay(ms: number) {
+    return new Promise( resolve => setTimeout(resolve, ms) );
 }
 describe("multisig", () => {
     it("Tests the multisig program", async () => {
@@ -186,6 +191,7 @@ describe("multisig", () => {
             [multisig.publicKey.toBuffer()],
             program.programId
         );
+        console.log("MultisigSigner "+multisigSigner.toBase58())
         const [zebecVault, bumps]= await PublicKey.findProgramAddress([
             multisigSigner.toBuffer()], programZebec.programId
         )
@@ -242,7 +248,6 @@ describe("multisig", () => {
         ];
         let now = Math.floor(new Date().getTime() / 1000)
         const startTime = new anchor.BN(now-1000) 
-        const paused = new anchor.BN(now) 
         const endTime=new anchor.BN(now+3600)
         const amount=new anchor.BN(1000)
         const data = programZebec.coder.instruction.encode("nativeStream", {startTime:startTime,endTime:endTime,amount:amount});
@@ -278,6 +283,79 @@ describe("multisig", () => {
             signers: [ownerB],
           });
         console.log("Multisig Stream SOl TransactionTransaction Approved by ownerB", approveTx);
+        const exeTxn = await program.rpc.executeTransaction({
+            accounts: {
+              multisig: multisig.publicKey,
+              multisigSigner,
+              transaction: transaction.publicKey,
+            },
+            remainingAccounts: accounts
+            .map((t: any) => {
+            if (t.pubkey.equals(multisigSigner)) {
+                return { ...t, isSigner: false };
+            }
+            return t;
+            })
+            .concat({
+            pubkey: programZebec.programId,
+            isWritable: false,
+            isSigner: false,
+            }),
+        });
+        console.log("Multisig Stream SOl TransactionTransaction  executed", exeTxn);
+    })
+    it("Pause stream from multisig", async () => {
+        const [multisigSigner, nonce] =
+        await anchor.web3.PublicKey.findProgramAddress(
+            [multisig.publicKey.toBuffer()],
+            program.programId
+        );
+        console.log(multisigSigner.toBase58())
+        const accounts = [
+        {
+            pubkey: multisigSigner,
+            isWritable: false,
+            isSigner: true,
+        },
+        {
+            pubkey: receiver.publicKey,
+            isWritable: false,
+            isSigner: false,
+        },
+        {
+            pubkey: dataAccount.publicKey,
+            isWritable: true,
+            isSigner: false,
+        },
+        ];
+        const transaction = anchor.web3.Keypair.generate();
+        const txSize = 1000;
+        const data = programZebec.coder.instruction.encode("pauseStream", {});
+        const tx = await program.rpc.createTransaction(pid, accounts,data, {
+            accounts: {
+                multisig: multisig.publicKey,
+                transaction: transaction.publicKey,
+                proposer: ownerA.publicKey,
+            },
+            instructions: [
+                await program.account.transaction.createInstruction(
+                transaction,
+                txSize
+                ),
+            ],
+            signers: [transaction, ownerA],
+            });
+        console.log("Pause Stream SOl Transaction created ", tx);
+        const approveTx = await program.rpc.approve({
+            accounts: {
+              multisig: multisig.publicKey,
+              transaction: transaction.publicKey,
+              owner: ownerB.publicKey,
+            },
+            signers: [ownerB],
+          });
+        console.log("Multisig Stream SOl TransactionTransaction Approved by ownerB", approveTx);
+        // await delay(100000);
         await program.rpc.executeTransaction({
             accounts: {
               multisig: multisig.publicKey,
@@ -296,10 +374,82 @@ describe("multisig", () => {
             isWritable: false,
             isSigner: false,
             }),
-            });
+        });
+
     })
+    it("Resume stream from multisig", async () => {
+        const [multisigSigner, nonce] =
+        await anchor.web3.PublicKey.findProgramAddress(
+            [multisig.publicKey.toBuffer()],
+            program.programId
+        );
+        console.log(multisigSigner.toBase58())
+        const accounts = [
+        {
+            pubkey: multisigSigner,
+            isWritable: false,
+            isSigner: true,
+        },
+        {
+            pubkey: receiver.publicKey,
+            isWritable: false,
+            isSigner: false,
+        },
+        {
+            pubkey: dataAccount.publicKey,
+            isWritable: true,
+            isSigner: false,
+        },
+        ];
+        const transaction = anchor.web3.Keypair.generate();
+        const txSize = 1000;
+        const data = programZebec.coder.instruction.encode("pauseStream", {});
+        const tx = await program.rpc.createTransaction(pid, accounts,data, {
+            accounts: {
+                multisig: multisig.publicKey,
+                transaction: transaction.publicKey,
+                proposer: ownerA.publicKey,
+            },
+            instructions: [
+                await program.account.transaction.createInstruction(
+                transaction,
+                txSize
+                ),
+            ],
+            signers: [transaction, ownerA],
+            });
+        console.log("Pause Stream SOl Transaction created ", tx);
+        const approveTx = await program.rpc.approve({
+            accounts: {
+              multisig: multisig.publicKey,
+              transaction: transaction.publicKey,
+              owner: ownerB.publicKey,
+            },
+            signers: [ownerB],
+          });
+        console.log("Multisig Stream SOl TransactionTransaction Approved by ownerB", approveTx);
+        // await delay(100000);
+        await program.rpc.executeTransaction({
+            accounts: {
+              multisig: multisig.publicKey,
+              multisigSigner,
+              transaction: transaction.publicKey,
+            },
+            remainingAccounts: accounts
+            .map((t: any) => {
+            if (t.pubkey.equals(multisigSigner)) {
+                return { ...t, isSigner: false };
+            }
+            return t;
+            })
+            .concat({
+            pubkey: programZebec.programId,
+            isWritable: false,
+            isSigner: false,
+            }),
+        });
 
-
+    })
 
 
 })
