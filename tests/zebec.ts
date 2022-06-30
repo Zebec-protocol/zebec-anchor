@@ -25,6 +25,7 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
   const sender =  anchor.web3.Keypair.generate();
   const receiver =  anchor.web3.Keypair.generate();
   const fee_receiver = new anchor.web3.Keypair();
+
   async function airdrop_sol(wallet_address: PublicKey){
       const signature = program.provider.connection.requestAirdrop(wallet_address, LAMPORTS_PER_SOL)
       const tx = await program.provider.connection.confirmTransaction(await signature);
@@ -42,33 +43,32 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
     const accountInfo = spl.AccountLayout.decode(data);
     return accountInfo.amount;
   }
-  describe('zebec token', () => {
   const createMint = async (connection: anchor.web3.Connection): Promise<anchor.web3.PublicKey> => {
-      const lamportsForMint = await provider.connection.getMinimumBalanceForRentExemption(spl.MintLayout.span);
-      let tx = new anchor.web3.Transaction();
-      // Allocate mint
-      tx.add(
-          anchor.web3.SystemProgram.createAccount({
-              programId: spl.TOKEN_PROGRAM_ID,
-              space: spl.MintLayout.span,
-              fromPubkey: provider.wallet.publicKey,
-              newAccountPubkey: tokenMint.publicKey,
-              lamports: lamportsForMint,
-          })
-      )
-      // Allocate wallet account
-      tx.add(
-          spl.createInitializeMintInstruction(
-              tokenMint.publicKey,
-              6,
-              provider.wallet.publicKey,
-              provider.wallet.publicKey,
-              spl.TOKEN_PROGRAM_ID,
-          )
-      );
-      const signature = await provider.send(tx, [tokenMint]);
-      console.log(`[${tokenMint.publicKey}] Created new mint account at ${signature}`);
-      return tokenMint.publicKey;
+    const lamportsForMint = await provider.connection.getMinimumBalanceForRentExemption(spl.MintLayout.span);
+    let tx = new anchor.web3.Transaction();
+    // Allocate mint
+    tx.add(
+        anchor.web3.SystemProgram.createAccount({
+            programId: spl.TOKEN_PROGRAM_ID,
+            space: spl.MintLayout.span,
+            fromPubkey: provider.wallet.publicKey,
+            newAccountPubkey: tokenMint.publicKey,
+            lamports: lamportsForMint,
+        })
+    )
+    // Allocate wallet account
+    tx.add(
+        spl.createInitializeMintInstruction(
+            tokenMint.publicKey,
+            6,
+            provider.wallet.publicKey,
+            provider.wallet.publicKey,
+            spl.TOKEN_PROGRAM_ID,
+        )
+    );
+    const signature = await provider.send(tx, [tokenMint]);
+    console.log(`[${tokenMint.publicKey}] Created new mint account at ${signature}`);
+    return tokenMint.publicKey;
   }
   const createUserAndAssociatedWallet = async (connection: anchor.web3.Connection, mint?: anchor.web3.PublicKey): Promise<anchor.web3.PublicKey | undefined> => {
     let userAssociatedTokenAccount: anchor.web3.PublicKey | undefined = undefined;
@@ -111,7 +111,8 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
         console.log(`[${userAssociatedTokenAccount.toBase58()}] New associated account for mint ${mint.toBase58()}: ${txFundTokenSig}`);
       }
       return userAssociatedTokenAccount;
-    }
+  }
+  describe('zebec token', () => {
     it('Airdrop Solana', async()=>{
       await airdrop_sol(sender.publicKey)
       await airdrop_sol(receiver.publicKey)
@@ -144,7 +145,7 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
     assert.equal(data_create_set.vaultAddress.toString(),fee_vault.toString());
     assert.equal(data_create_set.owner.toString(),fee_receiver.publicKey.toString());
     assert.equal(data_create_set.feePercentage.toString(),fee_percentage.toString());
-  })
+    })
     it('Token Stream',async()=>{
       const mint = await createMint(provider.connection);
       console.log("The mint is %s",mint.toBase58())
@@ -197,7 +198,6 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
     assert.equal(withdraw_info.amount.toString(),amount.toString());
     })
     it('Token Deposit',async()=>{
-  
       const connection = new Connection("http://localhost:8899", "confirmed");
       const source_token_account = await createUserAndAssociatedWallet(connection,tokenMint.publicKey)
       console.log("The source token account is %s",source_token_account.toString());
@@ -229,8 +229,7 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
     console.log("Your transaction for deposit token signature", tx);
     const tokenbalance = await getTokenBalace(pda_token_account);
     assert.equal(tokenbalance.toString(),amount.toString());
-    }
-    )
+    })
     it('Pause Stream Token', async () => {
       const tx = await program.rpc.pauseResumeTokenStream({
         accounts:{
@@ -242,13 +241,27 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
         instructions:[
         ],
       });
+
       console.log("Your transaction for pause token stream signature", tx);
       const data_account = await program.account.streamToken.fetch(
         dataAccount.publicKey
       );
-      assert.equal(data_account.paused.toString(),"1");    
+      assert.equal(data_account.paused.toString(),"1");  
     });
     it('Resume Stream Token', async () => {
+      const data_account0 = await program.account.streamToken.fetch(
+        dataAccount.publicKey
+      );
+      /*let now = Math.floor(new Date().getTime() / 1000)
+      let start_time=parseInt(data_account0.startTime.toString())
+      let end_time=parseInt(data_account0.endTime.toString())
+      let amount = parseInt(data_account0.amount.toString())
+      let time_spent = now - parseInt(data_account0.paused_at.toString());
+      let paused_start_time = parseInt(data_account0.start_time.toString())+ time_spent;
+      let paused_amount = ((paused_start_time-start_time)*amount)/(end_time-start_time)
+      let current_amount = ((now-start_time)*amount)/(end_time-start_time);
+      let total_amount_to_sent = current_amount - paused_amount;
+      let new_amount = amount - total_amount_to_sent;*/
       const tx = await program.rpc.pauseResumeTokenStream({
         accounts:{
           sender: sender.publicKey,
@@ -263,7 +276,9 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
       const data_account = await program.account.streamToken.fetch(
         dataAccount.publicKey
       );
-      assert.equal(data_account.paused.toString(),"0");  
+      assert.equal(data_account.paused.toString(),"0");
+      //assert.equal(data_account.amount.toString(),new_amount.toString());
+
     });  
     it('Withdraw Token Stream',async()=>{
       const [zebecVault, _]= await PublicKey.findProgramAddress([
@@ -318,8 +333,7 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
         signers:[receiver,],
     });
     console.log("Your signature for withdraw token stream is ", tx);
-    }
-    )
+    })
     it('Retrieve Fees',async()=>{
       const [fee_vault ,_un]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
       anchor.utils.bytes.utf8.encode(OPERATE),], program.programId)
@@ -356,7 +370,8 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
         instructions:[],
     });
     console.log("Your signature for retrieve fees is ", tx);
-    await delay(10);
-    }
-    )
+    })
+    it('TVL Calculation',async()=>{
+      let x = await provider.connection.getProgramAccounts(programId)
+    })
   });
