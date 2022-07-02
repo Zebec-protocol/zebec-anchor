@@ -168,6 +168,7 @@ mod zebec {
             msg!("Stream has not been started");
             return Err(ErrorCode::StreamNotStarted.into());
         }
+        /////
         let mut allowed_amt = data_account.allowed_amt(now);
         if now >= data_account.end_time {
             allowed_amt = data_account.amount;
@@ -176,6 +177,9 @@ mod zebec {
         if allowed_amt > vault_token_account.amount{
             return Err(ErrorCode::InsufficientFunds.into());
         }
+        //If the State is paused 
+        //the program doesn't seem to
+        //allow withdraw
         if data_account.paused == 1 && Some(allowed_amt) > data_account.withdraw_limit {
             return Err(ErrorCode::InsufficientFunds.into());
         }       
