@@ -121,6 +121,7 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
     it('Create Set Vault',async()=>{
       const [fee_vault ,_un]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
       anchor.utils.bytes.utf8.encode(OPERATE),], program.programId)
+      console.log("Fee Vault: %s",fee_vault.toString());
       const [create_set_data ,_]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
         anchor.utils.bytes.utf8.encode(OPERATEDATA),fee_vault.toBuffer()], program.programId)
   
@@ -252,16 +253,6 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
       const data_account0 = await program.account.streamToken.fetch(
         dataAccount.publicKey
       );
-      /*let now = Math.floor(new Date().getTime() / 1000)
-      let start_time=parseInt(data_account0.startTime.toString())
-      let end_time=parseInt(data_account0.endTime.toString())
-      let amount = parseInt(data_account0.amount.toString())
-      let time_spent = now - parseInt(data_account0.paused_at.toString());
-      let paused_start_time = parseInt(data_account0.start_time.toString())+ time_spent;
-      let paused_amount = ((paused_start_time-start_time)*amount)/(end_time-start_time)
-      let current_amount = ((now-start_time)*amount)/(end_time-start_time);
-      let total_amount_to_sent = current_amount - paused_amount;
-      let new_amount = amount - total_amount_to_sent;*/
       const tx = await program.rpc.pauseResumeTokenStream({
         accounts:{
           sender: sender.publicKey,
@@ -277,7 +268,6 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
         dataAccount.publicKey
       );
       assert.equal(data_account.paused.toString(),"0");
-      //assert.equal(data_account.amount.toString(),new_amount.toString());
 
     });  
     it('Withdraw Token Stream',async()=>{
@@ -370,8 +360,5 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
         instructions:[],
     });
     console.log("Your signature for retrieve fees is ", tx);
-    })
-    it('TVL Calculation',async()=>{
-      let x = await provider.connection.getProgramAccounts(programId)
     })
   });
