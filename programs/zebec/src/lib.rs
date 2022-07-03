@@ -133,7 +133,7 @@ mod zebec {
         start_time:u64,
         end_time:u64,
         amount:u64,
-        withdraw_limit:Option<u64>,
+        withdraw_limit:u64,
     ) ->Result<()>
         {
         let now = Clock::get()?.unix_timestamp as u64; 
@@ -180,7 +180,7 @@ mod zebec {
         //If the State is paused 
         //the program doesn't seem to
         //allow withdraw
-        if data_account.paused == 1 && Some(allowed_amt) > data_account.withdraw_limit {
+        if data_account.paused == 1 && allowed_amt > data_account.withdraw_limit {
             return Err(ErrorCode::InsufficientFunds.into());
         }       
         let comission: u64 = ctx.accounts.create_vault_data.fee_percentage*allowed_amt/10000; 
@@ -257,7 +257,7 @@ mod zebec {
         }
         else{
             data_account.paused = 1;
-            data_account.withdraw_limit = Some(allowed_amt);
+            data_account.withdraw_limit = allowed_amt;
             data_account.paused_at = now;
         }
         Ok(())
@@ -730,7 +730,7 @@ pub struct StreamToken {
     pub start_time: u64,
     pub end_time: u64,
     pub paused: u64,
-    pub withdraw_limit: Option<u64>,
+    pub withdraw_limit: u64,
     pub amount: u64,
     pub sender:   Pubkey,
     pub receiver: Pubkey,
