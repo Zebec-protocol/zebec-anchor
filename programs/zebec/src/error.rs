@@ -40,4 +40,6 @@ pub enum ErrorCode {
     AlreadyWithdrawnStreamingAmount,
     #[msg("NumericalOverflow")]
     NumericalOverflow,
+    #[msg("PausedAmountEsceeds")]
+    PausedAmountExceeds,
 }
