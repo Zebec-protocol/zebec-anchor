@@ -60,6 +60,7 @@ mod zebec {
         data_account.sender = ctx.accounts.sender.key();
         data_account.receiver = ctx.accounts.receiver.key();
         data_account.fee_owner=ctx.accounts.fee_owner.key();
+        data_account.paused_amt=0;
         Ok(())
     }
     pub fn withdraw_stream(
@@ -72,23 +73,32 @@ mod zebec {
         if now <= data_account.start_time {
             return Err(ErrorCode::StreamNotStarted.into());
         }
+        //Calculated Amount
         let mut allowed_amt = data_account.allowed_amt(now);
+        //If end time total amount is allocated
         if now >= data_account.end_time {
             allowed_amt = data_account.amount;
         }
-        allowed_amt = allowed_amt.checked_sub(data_account.withdrawn).ok_or(ErrorCode::AlreadyWithdrawnStreamingAmount)?;
-        if allowed_amt > zebec_vault.lamports(){
-            return Err(ErrorCode::InsufficientFunds.into());
+        //if paused only the amount equal to withdraw limit is allowed
+        if data_account.paused == 1  
+        {
+            allowed_amt=data_account.withdraw_limit;
         }
-        if data_account.paused == 1 && allowed_amt > data_account.withdraw_limit {
-                    return Err(ErrorCode::InsufficientFunds.into());
+        //allowed amount is subtracted from paused amount
+        allowed_amt = allowed_amt.checked_sub(data_account.paused_amt).ok_or(ErrorCode::PausedAmountExceeds)?;
+        //allowed amount is subtracted from withdrawn  
+        allowed_amt = allowed_amt.checked_sub(data_account.withdrawn).ok_or(ErrorCode::AlreadyWithdrawnStreamingAmount)?;
+        
+        if allowed_amt > zebec_vault.lamports()
+        {
+            return Err(ErrorCode::InsufficientFunds.into());
         }
         let comission: u64 = ctx.accounts.create_vault_data.fee_percentage*allowed_amt/10000; 
         let receiver_amount:u64=allowed_amt-comission;
         //receiver amount
-        create_transfer_signed(ctx.accounts.zebec_vault.to_account_info(),ctx.accounts.receiver.to_account_info(),receiver_amount)?;
+        create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.receiver.to_account_info(),receiver_amount)?;
         //commission
-        create_transfer_signed(ctx.accounts.zebec_vault.to_account_info(),ctx.accounts.fee_vault.to_account_info(),comission)?;
+        create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.fee_vault.to_account_info(),comission)?;
 
         data_account.withdrawn= data_account.withdrawn.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
         if data_account.withdrawn == data_account.amount { 
@@ -109,16 +119,11 @@ mod zebec {
             return Err(ErrorCode::StreamNotStarted.into());
         }
 
-        if data_account.paused ==1{
-            let time_spent = now - data_account.paused_at;
-            let paused_start_time = data_account.start_time + time_spent;
-            let paused_amount = data_account.allowed_amt(paused_start_time);
-            let current_amount = data_account.allowed_amt(now);
-            let total_amount_to_sent = current_amount - paused_amount;
-            data_account.amount = data_account.amount - total_amount_to_sent;
+        if data_account.paused ==1{            
+            let amount_paused_at=data_account.allowed_amt(data_account.paused_at);
+            let allowed_amt_now = data_account.allowed_amt(now);
+            data_account.paused_amt +=allowed_amt_now-amount_paused_at;
             data_account.paused = 0;
-            data_account.start_time += time_spent;
-            data_account.end_time += time_spent;
             data_account.paused_at = 0;
         }
         else{
@@ -133,7 +138,6 @@ mod zebec {
         start_time:u64,
         end_time:u64,
         amount:u64,
-        withdraw_limit:Option<u64>,
     ) ->Result<()>
         {
         let now = Clock::get()?.unix_timestamp as u64; 
@@ -148,13 +152,14 @@ mod zebec {
         data_account.start_time = start_time;
         data_account.end_time = end_time;
         data_account.paused = 0;
-        data_account.withdraw_limit = withdraw_limit;
+        data_account.withdraw_limit = 0;
         data_account.sender = *ctx.accounts.source_account.key;
         data_account.receiver = *ctx.accounts.dest_account.key;
         data_account.amount = amount;
         data_account.token_mint = ctx.accounts.mint.key();
         data_account.withdrawn = 0;
         data_account.paused_at = 0;
+        data_account.paused_amt=0;
         data_account.fee_owner= ctx.accounts.fee_owner.key();
         Ok(())
         }
@@ -168,25 +173,29 @@ mod zebec {
             msg!("Stream has not been started");
             return Err(ErrorCode::StreamNotStarted.into());
         }
-        /////
+        //Calculated Amount
         let mut allowed_amt = data_account.allowed_amt(now);
+        msg!("end {}",data_account.end_time);
+        //If end time total amount is allocated
         if now >= data_account.end_time {
             allowed_amt = data_account.amount;
         }
+        //if paused only the amount equal to withdraw limit is allowed
+        if data_account.paused == 1  
+        {
+            allowed_amt=data_account.withdraw_limit;
+        }
+        //allowed amount is subtracted from paused amount
+        allowed_amt = allowed_amt.checked_sub(data_account.paused_amt).ok_or(ErrorCode::PausedAmountExceeds)?;
+        //allowed amount is subtracted from withdrawn  
         allowed_amt = allowed_amt.checked_sub(data_account.withdrawn).ok_or(ErrorCode::AlreadyWithdrawnStreamingAmount)?;
-        if allowed_amt > vault_token_account.amount{
+        if allowed_amt > vault_token_account.amount
+        {
             return Err(ErrorCode::InsufficientFunds.into());
         }
-        //If the State is paused 
-        //the program doesn't seem to
-        //allow withdraw
-        if data_account.paused == 1 && Some(allowed_amt) > data_account.withdraw_limit {
-            return Err(ErrorCode::InsufficientFunds.into());
-        }       
         let comission: u64 = ctx.accounts.create_vault_data.fee_percentage*allowed_amt/10000; 
         let receiver_amount:u64=allowed_amt-comission;
-
-        //data_account signer seeds
+        //vault signer seeds
         let map = ctx.bumps;
         let (_key, bump) = map.iter().next_back().unwrap();
         let bump=bump.to_be_bytes();            
@@ -212,7 +221,7 @@ mod zebec {
 
         data_account.withdrawn= data_account.withdrawn.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
         if data_account.withdrawn == data_account.amount { 
-                create_transfer(data_account.to_account_info(),ctx.accounts.source_account.to_account_info(),ctx.accounts.system_program.to_account_info(),data_account.to_account_info().lamports())?;
+            create_transfer(data_account.to_account_info(),ctx.accounts.source_account.to_account_info(),ctx.accounts.system_program.to_account_info(),data_account.to_account_info().lamports())?;
         }       
         Ok(())
     }
@@ -243,21 +252,16 @@ mod zebec {
             return Err(ErrorCode::StreamNotStarted.into());
         }
 
-        if data_account.paused ==1{
-            let time_spent = now - data_account.paused_at;
-            let paused_start_time = data_account.start_time + time_spent;
-            let paused_amount = data_account.allowed_amt(paused_start_time);
-            let current_amount = data_account.allowed_amt(now);
-            let total_amount_to_sent = current_amount - paused_amount;
-            data_account.amount = data_account.amount - total_amount_to_sent;
+        if data_account.paused ==1{            
+            let amount_paused_at=data_account.allowed_amt(data_account.paused_at);
+            let allowed_amt_now = data_account.allowed_amt(now);
+            data_account.paused_amt +=allowed_amt_now-amount_paused_at;
             data_account.paused = 0;
-            data_account.start_time += time_spent;
-            data_account.end_time += time_spent;
             data_account.paused_at = 0;
         }
         else{
             data_account.paused = 1;
-            data_account.withdraw_limit = Some(allowed_amt);
+            data_account.withdraw_limit = allowed_amt;
             data_account.paused_at = now;
         }
         Ok(())
@@ -711,6 +715,7 @@ pub struct Stream {
     pub withdrawn: u64,
     pub paused_at: u64,
     pub fee_owner:Pubkey,
+    pub paused_amt:u64,
 }
 impl Stream {
     pub fn allowed_amt(&self, now: u64) -> u64 {
@@ -730,7 +735,7 @@ pub struct StreamToken {
     pub start_time: u64,
     pub end_time: u64,
     pub paused: u64,
-    pub withdraw_limit: Option<u64>,
+    pub withdraw_limit: u64,
     pub amount: u64,
     pub sender:   Pubkey,
     pub receiver: Pubkey,
@@ -738,6 +743,7 @@ pub struct StreamToken {
     pub withdrawn: u64,
     pub paused_at: u64,
     pub fee_owner:Pubkey,
+    pub paused_amt:u64,
 }
     impl StreamToken {
         pub fn allowed_amt(&self, now: u64) -> u64 {

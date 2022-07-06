@@ -3,7 +3,8 @@ import { assert } from "chai";
 import { Program } from '@project-serum/anchor';
 import { Zebec } from '../target/types/zebec';
 import * as spl from '@solana/spl-token'
-import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { Connection, PublicKey, LAMPORTS_PER_SOL, SYSVAR_CLOCK_PUBKEY } from "@solana/web3.js";
+import { AccountLayout } from '@solana/spl-token';
 
   // Configure the client to use the local cluster.
   const provider = anchor.Provider.env();
@@ -25,7 +26,9 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
   const sender =  anchor.web3.Keypair.generate();
   const receiver =  anchor.web3.Keypair.generate();
   const fee_receiver = new anchor.web3.Keypair();
-
+  let startTime:anchor.BN; 
+  let endTime:anchor.BN;
+  const amount=new anchor.BN(1000000)
   async function airdrop_sol(wallet_address: PublicKey){
       const signature = program.provider.connection.requestAirdrop(wallet_address, LAMPORTS_PER_SOL)
       const tx = await program.provider.connection.confirmTransaction(await signature);
@@ -34,7 +37,7 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
   function delay(ms: number) {
     return new Promise( resolve => setTimeout(resolve, ms) );
   }
-  async function getTokenBalace(tokenAccount:anchor.web3.PublicKey):Promise<bigint | undefined> {
+  async function getTokenBalance(tokenAccount:anchor.web3.PublicKey):Promise<bigint | undefined> {
 
     const tokenAccountInfo = await provider.connection.getAccountInfo(
       tokenAccount
@@ -118,14 +121,17 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
       await airdrop_sol(receiver.publicKey)
       await airdrop_sol(fee_receiver.publicKey)
     })
-    it('Create Set Vault',async()=>{
+    it('Create Set Vault',async()=>
+    {
       const [fee_vault ,_un]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
       anchor.utils.bytes.utf8.encode(OPERATE),], program.programId)
+
       console.log("Fee Vault: %s",fee_vault.toString());
       const [create_set_data ,_]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
         anchor.utils.bytes.utf8.encode(OPERATEDATA),fee_vault.toBuffer()], program.programId)
-  
-      const fee_percentage=new anchor.BN(25)
+      //for 0.25 % fee percentage should be sent 25
+      //which is divided by 10000 to get 0.25%
+      const fee_percentage=new anchor.BN(25)      
       const tx = await program.rpc.createVault(fee_percentage,{
         accounts:{
           feeVault: fee_vault,
@@ -141,8 +147,7 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
     
     const data_create_set = await program.account.createVault.fetch(
       create_set_data
-    );
-    
+    );    
     assert.equal(data_create_set.vaultAddress.toString(),fee_vault.toString());
     assert.equal(data_create_set.owner.toString(),fee_receiver.publicKey.toString());
     assert.equal(data_create_set.feePercentage.toString(),fee_percentage.toString());
@@ -159,11 +164,9 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
           anchor.utils.bytes.utf8.encode(OPERATEDATA),fee_vault.toBuffer()], program.programId)
   
       let now = Math.floor(new Date().getTime() / 1000)
-      const startTime = new anchor.BN(now-1000) 
-      const endTime=new anchor.BN(now+2000)
-      const withdrawLimit=new anchor.BN(1000000)
-      const amount=new anchor.BN(1000000)
-      const tx = await program.rpc.tokenStream(startTime,endTime,amount,withdrawLimit,{
+      startTime = new anchor.BN(now-1000) 
+      endTime=new anchor.BN(now+2000)
+      const tx = await program.rpc.tokenStream(startTime,endTime,amount,{
         accounts:{
           dataAccount: dataAccount.publicKey,
           withdrawData: withdraw_data,
@@ -188,14 +191,14 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
     assert.equal(data_account.startTime.toString(),startTime.toString());
     assert.equal(data_account.endTime.toString(),endTime.toString());
     assert.equal(data_account.amount.toString(),amount.toString());
-    assert.equal(data_account.withdrawLimit.toString(),withdrawLimit.toString());
     assert.equal(data_account.sender.toString(),sender.publicKey.toString());
     assert.equal(data_account.receiver.toString(),receiver.publicKey.toString());
-    assert.equal(data_account.paused.toString(),"0");    
+    assert.equal(data_account.paused.toString(),"0");   
+    let y = anchor.web3.SYSVAR_CLOCK_PUBKEY; 
+
     const withdraw_info = await program.account.tokenWithdraw.fetch(
       withdraw_data
     );
-    console.log("%s is the withdraw amount",withdraw_info.amount);
     assert.equal(withdraw_info.amount.toString(),amount.toString());
     })
     it('Token Deposit',async()=>{
@@ -228,7 +231,7 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
         instructions:[],
     });
     console.log("Your transaction for deposit token signature", tx);
-    const tokenbalance = await getTokenBalace(pda_token_account);
+    const tokenbalance = await getTokenBalance(pda_token_account);
     assert.equal(tokenbalance.toString(),amount.toString());
     })
     it('Pause Stream Token', async () => {
@@ -268,8 +271,7 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
         dataAccount.publicKey
       );
       assert.equal(data_account.paused.toString(),"0");
-
-    });  
+    });
     it('Withdraw Token Stream',async()=>{
       const [zebecVault, _]= await PublicKey.findProgramAddress([
         sender.publicKey.toBuffer(),], program.programId);
@@ -301,6 +303,7 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
       spl.TOKEN_PROGRAM_ID,
       spl.ASSOCIATED_TOKEN_PROGRAM_ID,
     )
+    let now =new anchor.BN( Math.floor(new Date().getTime() / 1000))
       const tx = await program.rpc.withdrawTokenStream({
         accounts:{
           destAccount:receiver.publicKey,
@@ -323,6 +326,24 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
         signers:[receiver,],
     });
     console.log("Your signature for withdraw token stream is ", tx);
+    const data_account = await program.account.streamToken.fetch(
+      dataAccount.publicKey
+    );
+    if  (data_account.paused.toString() == "1")
+    {
+    console.log("case 1");
+    let withdraw_amt = await getTokenBalance(fee_token_account)+await getTokenBalance(dest_token_account);
+    assert.equal(data_account.withdrawLimit.toString(),withdraw_amt.toString()); 
+    }
+    if  (data_account.paused.toString() != "1" && now>endTime)  
+    {
+      console.log("case 2");
+    let balance1 = await getTokenBalance(fee_token_account);
+    let balance2 =await getTokenBalance(dest_token_account);
+    let withdraw_amt= balance1+balance2;
+    let  withdrawn_amount = data_account.withdrawn
+    assert.equal( withdrawn_amount.toString(),withdraw_amt.toString()); 
+    } 
     })
     it('Retrieve Fees',async()=>{
       const [fee_vault ,_un]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
@@ -360,5 +381,5 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
         instructions:[],
     });
     console.log("Your signature for retrieve fees is ", tx);
-    })
+    })     
   });
