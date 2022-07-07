@@ -252,7 +252,7 @@ describe("multisig", () => {
         const amount=new anchor.BN(1000)
         const data = programZebec.coder.instruction.encode("nativeStream", {startTime:startTime,endTime:endTime,amount:amount});
         const txSize = 1000; // Big enough, cuz I'm lazy.
-        const dataSize = 8+8+8+8+8+32+32+8+8+32+200
+        const dataSize = 20+8+8+8+8+8+32+32+32+8+8+32
 
         const transaction = anchor.web3.Keypair.generate();
         const tx = await program.rpc.createTransaction(pid, accounts, data, {

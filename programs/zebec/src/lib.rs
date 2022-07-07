@@ -413,7 +413,7 @@ pub struct Pause<'info> {
 }
 #[derive(Accounts)]
 pub struct TokenStream<'info> {
-    #[account(init,payer=source_account, space=20+8+8+8+8+8+32+32+32+8+8+32)]
+    #[account(zero)]
     pub data_account:  Account<'info, StreamToken>,
     #[account(
         init,

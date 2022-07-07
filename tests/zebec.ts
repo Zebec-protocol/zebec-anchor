@@ -70,7 +70,7 @@ import { AccountLayout } from '@solana/spl-token';
         )
     );
     const signature = await provider.send(tx, [tokenMint]);
-    console.log(`[${tokenMint.publicKey}] Created new mint account at ${signature}`);
+    console.log(`Created new mint account at ${signature}`);
     return tokenMint.publicKey;
   }
   const createUserAndAssociatedWallet = async (connection: anchor.web3.Connection, mint?: anchor.web3.PublicKey): Promise<anchor.web3.PublicKey | undefined> => {
@@ -83,7 +83,7 @@ import { AccountLayout } from '@solana/spl-token';
         lamports: 5 * anchor.web3.LAMPORTS_PER_SOL,
     }));
     const sigTxFund = await provider.send(txFund);
-    console.log(`[${sender.publicKey.toBase58()}] Funded new account with 5 SOL: ${sigTxFund}`);
+    console.log(`Funded new account with 5 SOL: ${sigTxFund}`);
     if (mint) {
         // Create a token account for the sender and mint some tokens
         userAssociatedTokenAccount = await spl.getAssociatedTokenAddress(
@@ -111,7 +111,7 @@ import { AccountLayout } from '@solana/spl-token';
             spl.TOKEN_PROGRAM_ID,
         ));
         const txFundTokenSig = await provider.send(txFundTokenAccount, [sender]);
-        console.log(`[${userAssociatedTokenAccount.toBase58()}] New associated account for mint ${mint.toBase58()}: ${txFundTokenSig}`);
+        console.log(`New associated account for mint ${mint.toBase58()}: ${txFundTokenSig}`);
       }
       return userAssociatedTokenAccount;
   }
@@ -154,8 +154,6 @@ import { AccountLayout } from '@solana/spl-token';
     })
     it('Token Stream',async()=>{
       const mint = await createMint(provider.connection);
-      console.log("The mint is %s",mint.toBase58())
-      console.log("The data account is %s",dataAccount.publicKey.toBase58())
       const [withdraw_data, _]= await PublicKey.findProgramAddress([
       anchor.utils.bytes.utf8.encode(PREFIX_TOKEN),sender.publicKey.toBuffer(),mint.toBuffer()], program.programId)
       const [fee_vault ,_un]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
@@ -166,6 +164,7 @@ import { AccountLayout } from '@solana/spl-token';
       let now = Math.floor(new Date().getTime() / 1000)
       startTime = new anchor.BN(now-1000) 
       endTime=new anchor.BN(now+2000)
+      const dataSize = 8+8+8+8+8+32+32+8+8+32+200
       const tx = await program.rpc.tokenStream(startTime,endTime,amount,{
         accounts:{
           dataAccount: dataAccount.publicKey,
@@ -180,8 +179,13 @@ import { AccountLayout } from '@solana/spl-token';
           mint:mint,
           rent:anchor.web3.SYSVAR_RENT_PUBKEY,
         },
+        instructions:[
+          await program.account.streamToken.createInstruction(
+            dataAccount,
+            dataSize
+            ),
+        ],
         signers:[sender,dataAccount],
-        instructions:[],
     });
     console.log("Your transaction for token stream signature", tx);
     const data_account = await program.account.streamToken.fetch(
@@ -194,7 +198,6 @@ import { AccountLayout } from '@solana/spl-token';
     assert.equal(data_account.sender.toString(),sender.publicKey.toString());
     assert.equal(data_account.receiver.toString(),receiver.publicKey.toString());
     assert.equal(data_account.paused.toString(),"0");   
-    let y = anchor.web3.SYSVAR_CLOCK_PUBKEY; 
 
     const withdraw_info = await program.account.tokenWithdraw.fetch(
       withdraw_data
@@ -293,14 +296,12 @@ import { AccountLayout } from '@solana/spl-token';
     );
     if  (data_account.paused.toString() == "1")
     {
-    console.log("case 1");
     let withdraw_amt = await getTokenBalance(fee_token_account)+await getTokenBalance(dest_token_account);
     assert.equal(data_account.withdrawLimit.toString(),withdraw_amt.toString()); 
     }
     if  (data_account.paused.toString() != "1" && now>endTime)  
     {
     //paused 
-    console.log("case 2");
     let balance1 = await getTokenBalance(fee_token_account);
     let balance2 =await getTokenBalance(dest_token_account);
     let withdraw_amt= balance1+balance2;
@@ -309,7 +310,6 @@ import { AccountLayout } from '@solana/spl-token';
     }
     if  (data_account.paused.toString() != "1" && now<endTime)  
     {
-      console.log("case 3");
     let balance1 = await getTokenBalance(fee_token_account);
     let balance2 =await getTokenBalance(dest_token_account);
     let withdraw_amt= balance1+balance2;
@@ -414,14 +414,12 @@ import { AccountLayout } from '@solana/spl-token';
     );
     if  (data_account.paused.toString() == "1")
     {
-    console.log("case 1");
     let withdraw_amt = await getTokenBalance(fee_token_account)+await getTokenBalance(dest_token_account);
     assert.equal(data_account.withdrawLimit.toString(),withdraw_amt.toString()); 
     }
     if  (data_account.paused.toString() != "1" && now>endTime)  
     {
     //paused 
-    console.log("case 2");
     let balance1 = await getTokenBalance(fee_token_account);
     let balance2 =await getTokenBalance(dest_token_account);
     let withdraw_amt= balance1+balance2;
@@ -430,14 +428,12 @@ import { AccountLayout } from '@solana/spl-token';
     }
     if  (data_account.paused.toString() != "1" && now<endTime)  
     {
-      console.log("case 3");
     let balance1 = await getTokenBalance(fee_token_account);
     let balance2 =await getTokenBalance(dest_token_account);
     let withdraw_amt= balance1+balance2;
     let  withdrawn_amount = data_account.withdrawn
     assert.equal( withdrawn_amount.toString(),withdraw_amt.toString()); 
     } 
-    await delay (100000);
     })
     it('Retrieve Fees',async()=>{
       const [fee_vault ,_un]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
