@@ -68,7 +68,6 @@ mod zebec {
     ) -> Result<()> {
         let data_account = &mut ctx.accounts.data_account;
         let zebec_vault =&mut  ctx.accounts.zebec_vault;
-        let system = &mut ctx.accounts.system_program.to_account_info();  
         let now = Clock::get()?.unix_timestamp as u64;
         if now <= data_account.start_time {
             return Err(ErrorCode::StreamNotStarted.into());
@@ -102,7 +101,7 @@ mod zebec {
 
         data_account.withdrawn= data_account.withdrawn.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
         if data_account.withdrawn == data_account.amount { 
-            create_transfer(data_account.to_account_info(),ctx.accounts.sender.to_account_info(),system.to_account_info(),data_account.to_account_info().lamports())?;
+            create_transfer_signed(data_account.to_account_info(),ctx.accounts.sender.to_account_info(), data_account.to_account_info().lamports())?;
         }
         Ok(())
     }
@@ -221,7 +220,7 @@ mod zebec {
 
         data_account.withdrawn= data_account.withdrawn.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
         if data_account.withdrawn == data_account.amount { 
-            create_transfer(data_account.to_account_info(),ctx.accounts.source_account.to_account_info(),ctx.accounts.system_program.to_account_info(),data_account.to_account_info().lamports())?;
+            create_transfer_signed(data_account.to_account_info(),ctx.accounts.source_account.to_account_info(), data_account.to_account_info().lamports())?;
         }       
         Ok(())
     }
@@ -511,7 +510,7 @@ pub struct TokenWithdrawStream<'info> {
     #[account(mut)]
     pub dest_account: Signer<'info>,
     //User Account
-    #[account()]
+    #[account(mut)]
     /// CHECK:
     pub source_account: AccountInfo<'info>,
     /// CHECK:
