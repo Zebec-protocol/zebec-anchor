@@ -29,6 +29,13 @@ import { AccountLayout } from '@solana/spl-token';
   let startTime:anchor.BN; 
   let endTime:anchor.BN;
   const amount=new anchor.BN(1000000)
+    /*
+  IF WANT TO TEST CANCEL 
+  cancel =1
+  otherwise 
+  cancel =0
+  */
+  const cancel = 0
   async function airdrop_sol(wallet_address: PublicKey){
       const signature = program.provider.connection.requestAirdrop(wallet_address, LAMPORTS_PER_SOL)
       const tx = await program.provider.connection.confirmTransaction(await signature);
@@ -117,6 +124,7 @@ import { AccountLayout } from '@solana/spl-token';
   }
   describe('zebec token', () => {
     it('Airdrop Solana', async()=>{
+      await airdrop_sol(sender.publicKey)
       await airdrop_sol(sender.publicKey)
       await airdrop_sol(receiver.publicKey)
       await airdrop_sol(fee_receiver.publicKey)
@@ -217,7 +225,7 @@ import { AccountLayout } from '@solana/spl-token';
           spl.TOKEN_PROGRAM_ID,
           spl.ASSOCIATED_TOKEN_PROGRAM_ID,
       )
-      const amount=new anchor.BN(1000000)  
+      const amount=new anchor.BN(500500)  
       const tx = await program.rpc.depositToken(amount,{
         accounts:{
           zebecVault:zebecVault,
@@ -237,7 +245,83 @@ import { AccountLayout } from '@solana/spl-token';
     const tokenbalance = await getTokenBalance(pda_token_account);
     assert.equal(tokenbalance.toString(),amount.toString());
     })
-    it('Withdraw Token Stream',async()=>{
+    it('Token Deposit Again',async()=>{
+      const source_token_account = await spl.getAssociatedTokenAddress(
+        tokenMint.publicKey,
+        sender.publicKey,
+        true,
+        spl.TOKEN_PROGRAM_ID,
+        spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+    )
+      console.log("The source token account is %s",source_token_account.toString());
+      const [zebecVault, _]= await PublicKey.findProgramAddress([
+        sender.publicKey.toBuffer(),], program.programId);
+      const pda_token_account =await spl.getAssociatedTokenAddress(
+          tokenMint.publicKey,
+          zebecVault,
+          true,
+          spl.TOKEN_PROGRAM_ID,
+          spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+      )
+      const amount=new anchor.BN(500000)  
+      const tx = await program.rpc.depositToken(amount,{
+        accounts:{
+          zebecVault:zebecVault,
+          sourceAccount: sender.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram:spl.TOKEN_PROGRAM_ID,
+          associatedTokenProgram:spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+          rent:anchor.web3.SYSVAR_RENT_PUBKEY,
+          mint:tokenMint.publicKey,
+          sourceAccountTokenAccount:source_token_account,
+          pdaAccountTokenAccount:pda_token_account
+        },
+        signers:[sender,],
+        instructions:[],
+    });
+    console.log("Your transaction for deposit token signature", tx);
+    })
+    it('Initializer Token Withdrawal',async()=>{
+      const source_token_account = await spl.getAssociatedTokenAddress(
+        tokenMint.publicKey,
+        sender.publicKey,
+        true,
+        spl.TOKEN_PROGRAM_ID,
+        spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+    )
+      const [withdraw_data, _non]= await PublicKey.findProgramAddress([
+      anchor.utils.bytes.utf8.encode(PREFIX_TOKEN),sender.publicKey.toBuffer(),tokenMint.publicKey.toBuffer()], program.programId)
+  
+      const [zebecVault, _]= await PublicKey.findProgramAddress([
+        sender.publicKey.toBuffer(),], program.programId);
+
+      const pda_token_account =await spl.getAssociatedTokenAddress(
+          tokenMint.publicKey,
+          zebecVault,
+          true,
+          spl.TOKEN_PROGRAM_ID,
+          spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+      )
+      const amount=new anchor.BN(500)  
+      const tx = await program.rpc.initializerTokenWithdrawal(amount,{
+        accounts:{
+          zebecVault:zebecVault,
+          withdrawData:withdraw_data,
+          sourceAccount: sender.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram:spl.TOKEN_PROGRAM_ID,
+          associatedTokenProgram:spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+          rent:anchor.web3.SYSVAR_RENT_PUBKEY,
+          mint:tokenMint.publicKey,
+          sourceAccountTokenAccount:source_token_account,
+          pdaAccountTokenAccount:pda_token_account
+        },
+        signers:[sender,],
+        instructions:[],
+    });
+    console.log("Your transaction signature", tx);
+    })      
+    it('Cancel Token Stream',async()=>{
       const [zebecVault, _]= await PublicKey.findProgramAddress([
         sender.publicKey.toBuffer(),], program.programId);
       const [withdraw_data, _b]= await PublicKey.findProgramAddress([
@@ -268,54 +352,30 @@ import { AccountLayout } from '@solana/spl-token';
       spl.TOKEN_PROGRAM_ID,
       spl.ASSOCIATED_TOKEN_PROGRAM_ID,
     )
-    let now =new anchor.BN( Math.floor(new Date().getTime() / 1000))
-      const tx = await program.rpc.withdrawTokenStream({
-        accounts:{
-          destAccount:receiver.publicKey,
-          sourceAccount: sender.publicKey,
-          feeOwner:fee_receiver.publicKey,
-          createVaultData:create_set_data,
-          feeVault:fee_vault,
-          zebecVault:zebecVault,
-          dataAccount:dataAccount.publicKey,
-          withdrawData:withdraw_data,     
-          systemProgram: anchor.web3.SystemProgram.programId,
-          tokenProgram:spl.TOKEN_PROGRAM_ID,
-          associatedTokenProgram:spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-          rent:anchor.web3.SYSVAR_RENT_PUBKEY,
-          mint:tokenMint.publicKey,
-          pdaAccountTokenAccount:pda_token_account,
-          destTokenAccount:dest_token_account,
-          feeRecieverTokenAccount:fee_token_account,
-        },
-        signers:[receiver,],
-    });
-    console.log("Your signature for withdraw token stream is ", tx);
-    const data_account = await program.account.streamToken.fetch(
-      dataAccount.publicKey
-    );
-    if  (data_account.paused.toString() == "1")
+    if (cancel!=0)
     {
-    let withdraw_amt = await getTokenBalance(fee_token_account)+await getTokenBalance(dest_token_account);
-    assert.equal(data_account.withdrawLimit.toString(),withdraw_amt.toString()); 
-    }
-    if  (data_account.paused.toString() != "1" && now>endTime)  
-    {
-    //paused 
-    let balance1 = await getTokenBalance(fee_token_account);
-    let balance2 =await getTokenBalance(dest_token_account);
-    let withdraw_amt= balance1+balance2;
-    let  withdrawn_amount = data_account.amount
-    assert.equal( withdrawn_amount.toString(),withdraw_amt.toString()); 
-    }
-    if  (data_account.paused.toString() != "1" && now<endTime)  
-    {
-    let balance1 = await getTokenBalance(fee_token_account);
-    let balance2 =await getTokenBalance(dest_token_account);
-    let withdraw_amt= balance1+balance2;
-    let withdrawn_amount = data_account.withdrawn
-    assert.equal( withdrawn_amount.toString(),withdraw_amt.toString()); 
-    } 
+    const tx = await program.rpc.cancelTokenStream({
+      accounts:{
+        destAccount:receiver.publicKey,
+        sourceAccount: sender.publicKey,
+        feeOwner:fee_receiver.publicKey,
+        createVaultData:create_set_data,
+        feeVault:fee_vault,
+        zebecVault:zebecVault,
+        dataAccount:dataAccount.publicKey,
+        withdrawData:withdraw_data,     
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram:spl.TOKEN_PROGRAM_ID,
+        associatedTokenProgram:spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+        rent:anchor.web3.SYSVAR_RENT_PUBKEY,
+        mint:tokenMint.publicKey,
+        pdaAccountTokenAccount:pda_token_account,
+        destTokenAccount:dest_token_account,
+        feeRecieverTokenAccount:fee_token_account,
+      },
+      signers:[sender,],
+  });
+  console.log("Your signature for cancel token stream is ", tx);}
     })
     it('Pause Stream Token', async () => {
       const tx = await program.rpc.pauseResumeTokenStream({

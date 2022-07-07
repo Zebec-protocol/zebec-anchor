@@ -1,4 +1,4 @@
-import * as anchor from '@project-serum/anchor';
+/*import * as anchor from '@project-serum/anchor';
 import { Program } from '@project-serum/anchor';
 import { Zebec } from '../target/types/zebec';
 import * as spl from '@solana/spl-token'
@@ -455,3 +455,4 @@ describe("multisig", () => {
 
 
 })
+*/

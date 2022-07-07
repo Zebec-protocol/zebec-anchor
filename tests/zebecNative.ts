@@ -3,6 +3,7 @@ import { Program } from '@project-serum/anchor';
 import { Zebec } from '../target/types/zebec';
 import * as spl from '@solana/spl-token'
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { ExitStatus } from 'typescript';
 
   // Configure the client to use the local cluster.
   const provider = anchor.Provider.env();
@@ -38,7 +39,14 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
   }
   function delay(ms: number) {
     return new Promise( resolve => setTimeout(resolve, ms) );
-}
+  }
+  /*
+  IF WANT TO TEST CANCEL 
+  cancel =1
+  otherwise 
+  cancel =0
+  */
+  const cancel = 0
 describe('zebec native', () => {
   it('Airdrop Solana', async()=>{
     await airdrop_sol(sender.publicKey)
@@ -69,7 +77,24 @@ describe('zebec native', () => {
     const [zebecVault, bumps]= await PublicKey.findProgramAddress([
       sender.publicKey.toBuffer()], program.programId
     )
-    const amount=new anchor.BN(1000000)
+    const amount=new anchor.BN(500000)
+    const tx = await program.rpc.depositSol(amount,{
+      accounts:{
+        zebecVault: zebecVault,
+        sender: sender.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      },
+      signers:[sender],
+      instructions:[
+      ],
+    });
+    console.log("Your transaction signature", tx);
+  });
+  it('Deposit Sol Again', async () => {
+    const [zebecVault, bumps]= await PublicKey.findProgramAddress([
+      sender.publicKey.toBuffer()], program.programId
+    )
+    const amount=new anchor.BN(500000)
     const tx = await program.rpc.depositSol(amount,{
       accounts:{
         zebecVault: zebecVault,
@@ -119,7 +144,27 @@ describe('zebec native', () => {
     });
     console.log("Your transaction signature", tx);
   });
-  it('Withdraw Sol', async () => {
+  it('Initializer Withdrawal Sol', async () => {
+    const [withdraw_data, _]= await PublicKey.findProgramAddress([
+      anchor.utils.bytes.utf8.encode(PREFIX),sender.publicKey.toBuffer()], program.programId
+    )
+    const [zebecVault, bumps]= await PublicKey.findProgramAddress([
+      sender.publicKey.toBuffer()], program.programId
+    )
+    const amount = new anchor.BN(100);
+    const tx = await program.rpc.initializerNativeWithdrawal(amount,{
+      accounts:{
+        zebecVault:zebecVault,
+        withdrawData: withdraw_data,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        sender: sender.publicKey,
+
+      },
+      signers:[sender,],
+    });
+    console.log("Your transaction signature", tx);
+  });  
+  it('Cancel Sol Stream', async () => {
     const [withdraw_data, _]= await PublicKey.findProgramAddress([
       anchor.utils.bytes.utf8.encode(PREFIX),sender.publicKey.toBuffer()], program.programId
     )
@@ -130,12 +175,41 @@ describe('zebec native', () => {
       anchor.utils.bytes.utf8.encode(OPERATE),], program.programId)
     const [create_set_data ,_non]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
         anchor.utils.bytes.utf8.encode(OPERATEDATA),fee_vault.toBuffer()], program.programId)
-      
+    if (cancel!=0)
+    {  
+    const tx = await program.rpc.cancelStream({
+      accounts:{
+        zebecVault: zebecVault,
+        sender: sender.publicKey,
+        receiver:receiver.publicKey,
+        dataAccount:dataAccount.publicKey,
+        withdrawData:withdraw_data,
+        feeOwner:fee_receiver.publicKey,
+        createVaultData:create_set_data,
+        feeVault:fee_vault,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      },
+      signers:[sender],
+    });
+    console.log("Your transaction signature", tx);}
+  });
+  it('Withdraw Sol', async () => {
+    const [withdraw_data, _]= await PublicKey.findProgramAddress([
+      anchor.utils.bytes.utf8.encode(PREFIX),sender.publicKey.toBuffer()], program.programId
+    )
+    const [zebecVault, bumps]= await PublicKey.findProgramAddress([
+      sender.publicKey.toBuffer()], program.programId
+    )
+    const [fee_vault ,_un]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+      anchor.utils.bytes.utf8.encode(OPERATE),], program.programId)
+    const [create_set_data ,_non]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+        anchor.utils.bytes.utf8.encode(OPERATEDATA),fee_vault.toBuffer()], program.programId)  
     const tx = await program.rpc.withdrawStream({
       accounts:{
         zebecVault: zebecVault,
         sender: sender.publicKey,
         receiver:receiver.publicKey,
+        withdrawData:withdraw_data,
         dataAccount:dataAccount.publicKey,
         feeOwner:fee_receiver.publicKey,
         createVaultData:create_set_data,
