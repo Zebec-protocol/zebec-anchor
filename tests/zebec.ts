@@ -234,6 +234,89 @@ import { AccountLayout } from '@solana/spl-token';
     const tokenbalance = await getTokenBalance(pda_token_account);
     assert.equal(tokenbalance.toString(),amount.toString());
     })
+    it('Withdraw Token Stream',async()=>{
+      const [zebecVault, _]= await PublicKey.findProgramAddress([
+        sender.publicKey.toBuffer(),], program.programId);
+      const [withdraw_data, _b]= await PublicKey.findProgramAddress([
+        anchor.utils.bytes.utf8.encode(PREFIX_TOKEN),sender.publicKey.toBuffer(),tokenMint.publicKey.toBuffer()], program.programId)
+      const [fee_vault ,_un]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+          anchor.utils.bytes.utf8.encode(OPERATE),], program.programId)
+      const [create_set_data ,_non]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+            anchor.utils.bytes.utf8.encode(OPERATEDATA),fee_vault.toBuffer()], program.programId)
+    
+      const pda_token_account =await spl.getAssociatedTokenAddress(
+          tokenMint.publicKey,
+          zebecVault,
+          true,
+          spl.TOKEN_PROGRAM_ID,
+          spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+      )
+      const dest_token_account =await spl.getAssociatedTokenAddress(
+        tokenMint.publicKey,
+        receiver.publicKey,
+        true,
+        spl.TOKEN_PROGRAM_ID,
+        spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+    )
+    const fee_token_account =await spl.getAssociatedTokenAddress(
+      tokenMint.publicKey,
+      fee_vault,
+      true,
+      spl.TOKEN_PROGRAM_ID,
+      spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+    )
+    let now =new anchor.BN( Math.floor(new Date().getTime() / 1000))
+      const tx = await program.rpc.withdrawTokenStream({
+        accounts:{
+          destAccount:receiver.publicKey,
+          sourceAccount: sender.publicKey,
+          feeOwner:fee_receiver.publicKey,
+          createVaultData:create_set_data,
+          feeVault:fee_vault,
+          zebecVault:zebecVault,
+          dataAccount:dataAccount.publicKey,
+          withdrawData:withdraw_data,     
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram:spl.TOKEN_PROGRAM_ID,
+          associatedTokenProgram:spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+          rent:anchor.web3.SYSVAR_RENT_PUBKEY,
+          mint:tokenMint.publicKey,
+          pdaAccountTokenAccount:pda_token_account,
+          destTokenAccount:dest_token_account,
+          feeRecieverTokenAccount:fee_token_account,
+        },
+        signers:[receiver,],
+    });
+    console.log("Your signature for withdraw token stream is ", tx);
+    const data_account = await program.account.streamToken.fetch(
+      dataAccount.publicKey
+    );
+    if  (data_account.paused.toString() == "1")
+    {
+    console.log("case 1");
+    let withdraw_amt = await getTokenBalance(fee_token_account)+await getTokenBalance(dest_token_account);
+    assert.equal(data_account.withdrawLimit.toString(),withdraw_amt.toString()); 
+    }
+    if  (data_account.paused.toString() != "1" && now>endTime)  
+    {
+    //paused 
+    console.log("case 2");
+    let balance1 = await getTokenBalance(fee_token_account);
+    let balance2 =await getTokenBalance(dest_token_account);
+    let withdraw_amt= balance1+balance2;
+    let  withdrawn_amount = data_account.amount
+    assert.equal( withdrawn_amount.toString(),withdraw_amt.toString()); 
+    }
+    if  (data_account.paused.toString() != "1" && now<endTime)  
+    {
+      console.log("case 3");
+    let balance1 = await getTokenBalance(fee_token_account);
+    let balance2 =await getTokenBalance(dest_token_account);
+    let withdraw_amt= balance1+balance2;
+    let withdrawn_amount = data_account.withdrawn
+    assert.equal( withdrawn_amount.toString(),withdraw_amt.toString()); 
+    } 
+    })
     it('Pause Stream Token', async () => {
       const tx = await program.rpc.pauseResumeTokenStream({
         accounts:{
@@ -337,13 +420,24 @@ import { AccountLayout } from '@solana/spl-token';
     }
     if  (data_account.paused.toString() != "1" && now>endTime)  
     {
-      console.log("case 2");
+    //paused 
+    console.log("case 2");
+    let balance1 = await getTokenBalance(fee_token_account);
+    let balance2 =await getTokenBalance(dest_token_account);
+    let withdraw_amt= balance1+balance2;
+    let  withdrawn_amount = data_account.amount
+    assert.equal( withdrawn_amount.toString(),withdraw_amt.toString()); 
+    }
+    if  (data_account.paused.toString() != "1" && now<endTime)  
+    {
+      console.log("case 3");
     let balance1 = await getTokenBalance(fee_token_account);
     let balance2 =await getTokenBalance(dest_token_account);
     let withdraw_amt= balance1+balance2;
     let  withdrawn_amount = data_account.withdrawn
     assert.equal( withdrawn_amount.toString(),withdraw_amt.toString()); 
     } 
+    await delay (100000);
     })
     it('Retrieve Fees',async()=>{
       const [fee_vault ,_un]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
