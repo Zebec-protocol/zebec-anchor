@@ -248,7 +248,6 @@ mod zebec {
         }
         //Calculated Amount
         let mut allowed_amt = data_account.allowed_amt(now);
-        msg!("end {}",data_account.end_time);
         //If end time total amount is allocated
         if now >= data_account.end_time {
             allowed_amt = data_account.amount;
@@ -269,9 +268,7 @@ mod zebec {
         let comission: u64 = ctx.accounts.create_vault_data.fee_percentage*allowed_amt/10000; 
         let receiver_amount:u64=allowed_amt-comission;
         //vault signer seeds
-        let map = ctx.bumps;
-        let (_key, bump) = map.iter().next_back().unwrap();
-        let bump=bump.to_be_bytes();            
+        let bump = ctx.bumps.get("zebec_vault").unwrap().to_le_bytes();             
         let inner = vec![
             ctx.accounts.source_account.key.as_ref(),
             bump.as_ref(),
@@ -372,9 +369,7 @@ mod zebec {
         let comission: u64 = ctx.accounts.create_vault_data.fee_percentage*allowed_amt/10000; 
         let receiver_amount:u64=allowed_amt-comission;
         //vault signer seeds
-        let map = ctx.bumps;
-        let (_key, bump) = map.iter().next_back().unwrap();
-        let bump=bump.to_be_bytes();            
+        let bump = ctx.bumps.get("zebec_vault").unwrap().to_le_bytes();     
         let inner = vec![
             ctx.accounts.source_account.key.as_ref(),
             bump.as_ref(),
@@ -413,10 +408,7 @@ mod zebec {
         return Err(ErrorCode::InsufficientFunds.into());
         }
          //vault signer seeds
-         let map = ctx.bumps;
-         let (key, bump) = map.iter().next_back().unwrap();
-         msg!("The key is {}",key);
-         let bump=bump.to_be_bytes();            
+         let bump = ctx.bumps.get("zebec_vault").unwrap().to_le_bytes();            
          let inner = vec![
              ctx.accounts.source_account.key.as_ref(),
              bump.as_ref(),
@@ -452,9 +444,7 @@ mod zebec {
         ctx: Context<WithdrawFeesToken>,
     )->Result<()>{
         //data_account signer seeds
-        let map = ctx.bumps;
-        let (_, bump) = map.iter().next_back().unwrap();
-        let bump=bump.to_be_bytes();            
+        let bump = ctx.bumps.get("fee_vault").unwrap().to_le_bytes();          
         let inner = vec![
             ctx.accounts.fee_owner.key.as_ref(),
             OPERATE.as_bytes(), 
@@ -1058,9 +1048,9 @@ pub struct WithdrawFeesSol<'info> {
     )]
     /// CHECK:
     pub fee_vault:AccountInfo<'info>,
-      //Program Accounts
-      pub system_program: Program<'info, System>,
-      pub rent: Sysvar<'info, Rent>,
+    //Program Accounts
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
 #[derive(Accounts)]
 pub struct WithdrawFeesToken<'info> {
