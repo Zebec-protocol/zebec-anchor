@@ -152,6 +152,39 @@ import { AccountLayout } from '@solana/spl-token';
     assert.equal(data_create_set.owner.toString(),fee_receiver.publicKey.toString());
     assert.equal(data_create_set.feePercentage.toString(),fee_percentage.toString());
     })
+    it('Token Deposit',async()=>{
+      const connection = new Connection("http://localhost:8899", "confirmed");
+      const source_token_account = await createUserAndAssociatedWallet(connection,tokenMint.publicKey)
+      console.log("The source token account is %s",source_token_account.toString());
+      const [zebecVault, _]= await PublicKey.findProgramAddress([
+        sender.publicKey.toBuffer(),], program.programId);
+      const pda_token_account =await spl.getAssociatedTokenAddress(
+          tokenMint.publicKey,
+          zebecVault,
+          true,
+          spl.TOKEN_PROGRAM_ID,
+          spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+      )
+      const amount=new anchor.BN(1000000)  
+      const tx = await program.rpc.depositToken(amount,{
+        accounts:{
+          zebecVault:zebecVault,
+          sourceAccount: sender.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram:spl.TOKEN_PROGRAM_ID,
+          associatedTokenProgram:spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+          rent:anchor.web3.SYSVAR_RENT_PUBKEY,
+          mint:tokenMint.publicKey,
+          sourceAccountTokenAccount:source_token_account,
+          pdaAccountTokenAccount:pda_token_account
+        },
+        signers:[sender,],
+        instructions:[],
+    });
+    console.log("Your transaction for deposit token signature", tx);
+    const tokenbalance = await getTokenBalance(pda_token_account);
+    assert.equal(tokenbalance.toString(),amount.toString());
+    })
     it('Token Stream',async()=>{
       const mint = await createMint(provider.connection);
       const [withdraw_data, _]= await PublicKey.findProgramAddress([
@@ -203,39 +236,6 @@ import { AccountLayout } from '@solana/spl-token';
       withdraw_data
     );
     assert.equal(withdraw_info.amount.toString(),amount.toString());
-    })
-    it('Token Deposit',async()=>{
-      const connection = new Connection("http://localhost:8899", "confirmed");
-      const source_token_account = await createUserAndAssociatedWallet(connection,tokenMint.publicKey)
-      console.log("The source token account is %s",source_token_account.toString());
-      const [zebecVault, _]= await PublicKey.findProgramAddress([
-        sender.publicKey.toBuffer(),], program.programId);
-      const pda_token_account =await spl.getAssociatedTokenAddress(
-          tokenMint.publicKey,
-          zebecVault,
-          true,
-          spl.TOKEN_PROGRAM_ID,
-          spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-      )
-      const amount=new anchor.BN(1000000)  
-      const tx = await program.rpc.depositToken(amount,{
-        accounts:{
-          zebecVault:zebecVault,
-          sourceAccount: sender.publicKey,
-          systemProgram: anchor.web3.SystemProgram.programId,
-          tokenProgram:spl.TOKEN_PROGRAM_ID,
-          associatedTokenProgram:spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-          rent:anchor.web3.SYSVAR_RENT_PUBKEY,
-          mint:tokenMint.publicKey,
-          sourceAccountTokenAccount:source_token_account,
-          pdaAccountTokenAccount:pda_token_account
-        },
-        signers:[sender,],
-        instructions:[],
-    });
-    console.log("Your transaction for deposit token signature", tx);
-    const tokenbalance = await getTokenBalance(pda_token_account);
-    assert.equal(tokenbalance.toString(),amount.toString());
     })
     it('Withdraw Token Stream',async()=>{
       const [zebecVault, _]= await PublicKey.findProgramAddress([
