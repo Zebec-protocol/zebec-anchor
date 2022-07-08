@@ -51,6 +51,7 @@ describe('zebec native', () => {
   it('Airdrop Solana', async()=>{
     await airdrop_sol(sender.publicKey)
     await airdrop_sol(fee_receiver.publicKey)
+    await airdrop_sol(receiver.publicKey)
   })
   it('Create Set Vault',async()=>{
     const [fee_vault ,_un]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
@@ -152,7 +153,7 @@ describe('zebec native', () => {
       sender.publicKey.toBuffer()], program.programId
     )
     const amount = new anchor.BN(100);
-    const tx = await program.rpc.initializerNativeWithdrawal(amount,{
+    const tx = await program.rpc.nativeWithdrawal(amount,{
       accounts:{
         zebecVault:zebecVault,
         withdrawData: withdraw_data,

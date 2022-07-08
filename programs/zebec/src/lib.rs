@@ -181,23 +181,27 @@ mod zebec {
         create_transfer_signed(data_account.to_account_info(),ctx.accounts.sender.to_account_info(), data_account.to_account_info().lamports())?;       
         Ok(())
     } 
-    pub fn initializer_native_withdrawal(
+    pub fn native_withdrawal(
         ctx: Context<InitializerWithdrawal>,
         amount: u64,
     ) ->Result<()>{
         let withdraw_state = &mut ctx.accounts.withdraw_data;
         let zebec_vault =&mut  ctx.accounts.zebec_vault;
+
         if amount > zebec_vault.lamports()
         {
         return Err(ErrorCode::InsufficientFunds.into());
         }
+        // if no any stream is started allow the withdrawal w/o further checks
         if withdraw_state.amount ==0 
         {
         create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.sender.to_account_info(),amount)?;
         }
         else
         {
+        //Check remaining amount after withdrawal
         let allowed_amt = zebec_vault.lamports() - amount;
+        //if remaining amount is lesser then the required amount for stream stop making withdrawal 
         if allowed_amt < withdraw_state.amount {
             return Err(ErrorCode::StreamedAmt.into()); 
         }
@@ -397,12 +401,13 @@ mod zebec {
 
         Ok(())
     }
-    pub fn initializer_token_withdrawal(
+    pub fn token_withdrawal(
         ctx: Context<InitializerTokenWithdrawal>,
         amount: u64,
     ) -> Result<()>{
         let withdraw_state = &mut ctx.accounts.withdraw_data;
         let vault_token_account=&mut ctx.accounts.pda_account_token_account;
+        
         if amount > vault_token_account.amount
         {
         return Err(ErrorCode::InsufficientFunds.into());
@@ -414,6 +419,7 @@ mod zebec {
              bump.as_ref(),
          ];
          let outer = vec![inner.as_slice()];
+                // if no any stream is started allow the withdrawal w/o further checks
         if withdraw_state.amount ==0 
         {
          //transfering amount
@@ -426,11 +432,13 @@ mod zebec {
         }
         else
         {
+         //Check remaining amount after withdrawal
         let allowed_amt = vault_token_account.amount - amount;
+         //if remaining amount is lesser then the required amount for stream stop making withdrawal 
         if allowed_amt < withdraw_state.amount {
             return Err(ErrorCode::StreamedAmt.into()); 
         }
-        //transfering receiver amount
+        //transfering 
         create_transfer_token_signed(ctx.accounts.token_program.to_account_info(), 
         ctx.accounts.pda_account_token_account.to_account_info(),
         ctx.accounts.source_account_token_account.to_account_info(),
@@ -466,7 +474,6 @@ mod zebec {
         create_transfer_signed(ctx.accounts.fee_vault.to_account_info(),ctx.accounts.fee_owner.to_account_info(),ctx.accounts.fee_vault.lamports())?;
         Ok(())
     }
-
 }
 
 #[derive(Accounts)]

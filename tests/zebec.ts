@@ -303,7 +303,7 @@ import { AccountLayout } from '@solana/spl-token';
           spl.ASSOCIATED_TOKEN_PROGRAM_ID,
       )
       const amount=new anchor.BN(500)  
-      const tx = await program.rpc.initializerTokenWithdrawal(amount,{
+      const tx = await program.rpc.tokenWithdrawal(amount,{
         accounts:{
           zebecVault:zebecVault,
           withdrawData:withdraw_data,
