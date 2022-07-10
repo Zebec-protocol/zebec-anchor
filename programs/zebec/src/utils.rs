@@ -1,7 +1,6 @@
 
 use anchor_lang::prelude::*;
 use anchor_spl::token::Transfer;
-use solana_program::{program::{invoke},system_instruction};
 use crate::{error::ErrorCode};
 
 pub fn create_transfer<'a>(
@@ -10,16 +9,17 @@ pub fn create_transfer<'a>(
     system_program: AccountInfo<'a>,
     amount: u64,
 ) -> Result<()> {
-    invoke(
-        &system_instruction::transfer(
-            sender.key,
-            receiver.key,
-            amount
-        ),
+    let ix = anchor_lang::solana_program::system_instruction::transfer(
+        &sender.key(),
+        &receiver.key(),
+        amount,
+    );
+    anchor_lang::solana_program::program::invoke(
+        &ix,
         &[
             sender.to_account_info(),
             receiver.to_account_info(),
-            system_program.to_account_info()
+            system_program.to_account_info(),
         ],
     )?;
     Ok(())

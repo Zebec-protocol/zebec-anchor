@@ -59,7 +59,6 @@ describe('zebec native', () => {
   it('Stream Sol', async () => {
     let now = Math.floor(new Date().getTime() / 1000)
     const startTime = new anchor.BN(now-1000) 
-    const paused = new anchor.BN(now) 
     const endTime=new anchor.BN(now+3600)
     const amount=new anchor.BN(1000)
     const dataSize = 8+8+8+8+8+32+32+8+8+32+200
@@ -91,6 +90,7 @@ describe('zebec native', () => {
         sender: sender.publicKey,
         receiver:receiver.publicKey,
         dataAccount:dataAccount.publicKey,
+        withdrawData:await withdrawData(PREFIX,sender.publicKey),
         feeOwner:fee_receiver.publicKey,
         createVaultData:await create_set_data(fee_receiver.publicKey),
         feeVault:await feeVault(fee_receiver.publicKey),
