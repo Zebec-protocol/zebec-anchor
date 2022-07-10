@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token::{Mint, Token, TokenAccount,}};
-declare_id!("3svmYpJGih9yxkgqpExNdQZLKQ7Wu5SEjaVUbmbytUJg");
+declare_id!("Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia");
 
 pub mod utils;
 pub mod error;
@@ -395,7 +395,7 @@ mod zebec {
                                         outer,
                                         comission)?;  
                 //changing withdraw state
-                withdraw_state.amount-=data_account.amount-data_account.withdrawn;
+        withdraw_state.amount-=data_account.amount-data_account.withdrawn;
          //closing the data account to end the stream
         create_transfer_signed(data_account.to_account_info(),ctx.accounts.source_account.to_account_info(), data_account.to_account_info().lamports())?; 
 
