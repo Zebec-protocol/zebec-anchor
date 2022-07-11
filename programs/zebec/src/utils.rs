@@ -1,7 +1,6 @@
 
 use anchor_lang::prelude::*;
 use anchor_spl::token::Transfer;
-use solana_program::{program::{invoke},system_instruction};
 use crate::{error::ErrorCode};
 
 pub fn create_transfer<'a>(
@@ -10,16 +9,17 @@ pub fn create_transfer<'a>(
     system_program: AccountInfo<'a>,
     amount: u64,
 ) -> Result<()> {
-    invoke(
-        &system_instruction::transfer(
-            sender.key,
-            receiver.key,
-            amount
-        ),
+    let ix = anchor_lang::solana_program::system_instruction::transfer(
+        &sender.key(),
+        &receiver.key(),
+        amount,
+    );
+    anchor_lang::solana_program::program::invoke(
+        &ix,
         &[
             sender.to_account_info(),
             receiver.to_account_info(),
-            system_program.to_account_info()
+            system_program.to_account_info(),
         ],
     )?;
     Ok(())
@@ -81,21 +81,13 @@ pub fn create_transfer_token_signed<'a>
 
     Ok(())
 }
-pub fn get_zabec_vault_address_and_bump_seed(
-    sender: &Pubkey,
-    program_id: &Pubkey,
-) -> (Pubkey, u8) {
-    Pubkey::find_program_address(
-        &[
-            &sender.to_bytes(),
-        ],
-        program_id,
-    )
-}
-pub fn assert_keys_equal(key1: Pubkey, key2: Pubkey) -> Result<()> {
-    if key1 != key2 {
-        Err(ErrorCode::PublicKeyMismatch.into())
-    } else {
-        Ok(())
+pub fn check_overflow(start_time: u64, end_time: u64) -> Result<()> {
+    let now = Clock::get()?.unix_timestamp as u64; 
+    if now >= end_time{
+        return Err(ErrorCode::TimeEnd.into());
     }
+    if start_time >= end_time {
+        return Err(ErrorCode::InvalidInstruction.into());
+    }
+    Ok(())
 }
