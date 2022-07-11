@@ -235,8 +235,6 @@ pub fn process_token_withdrawal(
     Ok(())
 }
 
-
-
 #[derive(Accounts)]
 pub struct TokenStream<'info> {
     #[account(zero)]
