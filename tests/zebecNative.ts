@@ -1,5 +1,5 @@
 import * as anchor from '@project-serum/anchor';
-import { feeVault,create_set_data,zebecVault,withdrawData } from './src/Accounts';
+import { feeVault,create_fee_account,zebecVault,withdrawData } from './src/Accounts';
 import { airdropSol } from './src/utils';
 import {PREFIX} from './src/Constants'
 // Configure the client to use the local cluster.
@@ -28,10 +28,10 @@ describe('zebec native', () => {
   })
   it('Create Set Vault',async()=>{
     const fee_percentage=new anchor.BN(25)
-    const tx = await program.rpc.createVault(fee_percentage,{
+    const tx = await program.rpc.createFeeAccount(fee_percentage,{
       accounts:{
         feeVault: await feeVault(fee_receiver.publicKey),
-        createVaultData: await create_set_data(fee_receiver.publicKey),
+        createVaultData: await create_fee_account(fee_receiver.publicKey),
         owner: fee_receiver.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         rent:anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -67,7 +67,7 @@ describe('zebec native', () => {
         dataAccount: dataAccount.publicKey,
         withdrawData: await withdrawData(PREFIX,sender.publicKey),
         feeOwner:fee_receiver.publicKey,
-        createVaultData:await create_set_data(fee_receiver.publicKey),
+        createVaultData:await create_fee_account(fee_receiver.publicKey),
         feeVault:await feeVault(fee_receiver.publicKey),
         systemProgram: anchor.web3.SystemProgram.programId,
         sender: sender.publicKey,
@@ -92,7 +92,7 @@ describe('zebec native', () => {
         dataAccount:dataAccount.publicKey,
         withdrawData:await withdrawData(PREFIX,sender.publicKey),
         feeOwner:fee_receiver.publicKey,
-        createVaultData:await create_set_data(fee_receiver.publicKey),
+        createVaultData:await create_fee_account(fee_receiver.publicKey),
         feeVault:await feeVault(fee_receiver.publicKey),
         systemProgram: anchor.web3.SystemProgram.programId,
       },
@@ -130,7 +130,7 @@ describe('zebec native', () => {
     const tx = await program.rpc.withdrawFeesSol({
       accounts:{
         feeOwner: fee_receiver.publicKey,
-        createVaultData: await create_set_data(fee_receiver.publicKey),
+        createVaultData: await create_fee_account(fee_receiver.publicKey),
         feeVault: await feeVault(fee_receiver.publicKey),
         systemProgram: anchor.web3.SystemProgram.programId,
         rent:anchor.web3.SYSVAR_RENT_PUBKEY,

@@ -8,10 +8,10 @@ export const feeVault = async (fee_receiver:PublicKey): Promise<anchor.web3.Publ
       anchor.utils.bytes.utf8.encode(OPERATE),], programZebec)
     return fee_vault
   }
-export  const create_set_data = async (fee_receiver:PublicKey): Promise<anchor.web3.PublicKey> => {
-    const [create_set_data ,_]= await PublicKey.findProgramAddress([fee_receiver.toBuffer(),
+export  const create_fee_account = async (fee_receiver:PublicKey): Promise<anchor.web3.PublicKey> => {
+    const [create_fee_account ,_]= await PublicKey.findProgramAddress([fee_receiver.toBuffer(),
       anchor.utils.bytes.utf8.encode(OPERATEDATA),(await feeVault(fee_receiver)).toBuffer()], programZebec)
-    return create_set_data
+    return create_fee_account
   }
 export  const zebecVault = async (sender:PublicKey): Promise<anchor.web3.PublicKey> => {
   const [zebecVault, bumps]= await PublicKey.findProgramAddress([

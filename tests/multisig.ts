@@ -1,5 +1,5 @@
 import * as anchor from '@project-serum/anchor';
-import { zebecVault,withdrawData,create_set_data,feeVault } from './src/Accounts';
+import { zebecVault,withdrawData,create_fee_account,feeVault } from './src/Accounts';
 import { PREFIX } from './src/Constants';
 import { airdropSol } from './src/utils';
 
@@ -70,10 +70,10 @@ describe("multisig", () => {
       })
     it('Create Set Vault',async()=>{
         const fee_percentage=new anchor.BN(25)
-        const tx = await programZebec.rpc.createVault(fee_percentage,{
+        const tx = await programZebec.rpc.createFeeAccount(fee_percentage,{
           accounts:{
             feeVault: await feeVault(fee_receiver.publicKey),
-            createVaultData: await create_set_data(fee_receiver.publicKey),
+            createVaultData: await create_fee_account(fee_receiver.publicKey),
             owner: fee_receiver.publicKey,
             systemProgram: anchor.web3.SystemProgram.programId,
             rent:anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -182,7 +182,7 @@ describe("multisig", () => {
             isSigner: false,
         },
         {
-            pubkey: await create_set_data(fee_receiver.publicKey),
+            pubkey: await create_fee_account(fee_receiver.publicKey),
             isWritable: false,
             isSigner: false,
         },

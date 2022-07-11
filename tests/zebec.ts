@@ -2,7 +2,7 @@ import * as anchor from '@project-serum/anchor';
 import { assert } from "chai";
 import * as spl from '@solana/spl-token'
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { getTokenBalance,createMint,createUserAndAssociatedWallet,feeVault,create_set_data,zebecVault,withdrawData } from './src/Accounts';
+import { getTokenBalance,createMint,createUserAndAssociatedWallet,feeVault,create_fee_account,zebecVault,withdrawData } from './src/Accounts';
 import { PREFIX_TOKEN } from './src/Constants';
   // Configure the client to use the local cluster.
   const provider = anchor.Provider.env();
@@ -42,10 +42,10 @@ import { PREFIX_TOKEN } from './src/Constants';
       //for 0.25 % fee percentage should be sent 25
       //which is divided by 10000 to get 0.25%
       const fee_percentage=new anchor.BN(25)      
-      const tx = await program.rpc.createVault(fee_percentage,{
+      const tx = await program.rpc.createFeeAccount(fee_percentage,{
         accounts:{
           feeVault: await feeVault(fee_receiver.publicKey),
-          createVaultData: await create_set_data(fee_receiver.publicKey),
+          createVaultData: await create_fee_account(fee_receiver.publicKey),
           owner: fee_receiver.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           rent:anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -56,7 +56,7 @@ import { PREFIX_TOKEN } from './src/Constants';
     console.log("Your signature for create vault is ", tx);
     
     const data_create_set = await program.account.createVault.fetch(
-      await create_set_data(fee_receiver.publicKey)
+      await create_fee_account(fee_receiver.publicKey)
     );    
     assert.equal(data_create_set.vaultAddress.toString(),(await feeVault(fee_receiver.publicKey)).toString());
     assert.equal(data_create_set.owner.toString(),fee_receiver.publicKey.toString());
@@ -102,7 +102,7 @@ import { PREFIX_TOKEN } from './src/Constants';
           dataAccount: dataAccount.publicKey,
           withdrawData: await withdrawData(PREFIX_TOKEN,sender.publicKey,tokenMint.publicKey),
           feeOwner:fee_receiver.publicKey,
-          createVaultData:await create_set_data(fee_receiver.publicKey),
+          createVaultData:await create_fee_account(fee_receiver.publicKey),
           feeVault:await feeVault(fee_receiver.publicKey),
           sourceAccount: sender.publicKey,
           destAccount:receiver.publicKey,
@@ -164,7 +164,7 @@ import { PREFIX_TOKEN } from './src/Constants';
           destAccount:receiver.publicKey,
           sourceAccount: sender.publicKey,
           feeOwner:fee_receiver.publicKey,
-          createVaultData:await create_set_data(fee_receiver.publicKey),
+          createVaultData:await create_fee_account(fee_receiver.publicKey),
           feeVault:await feeVault(fee_receiver.publicKey),
           zebecVault:await zebecVault(sender.publicKey),
           dataAccount:dataAccount.publicKey,
@@ -270,7 +270,7 @@ import { PREFIX_TOKEN } from './src/Constants';
           destAccount:receiver.publicKey,
           sourceAccount: sender.publicKey,
           feeOwner:fee_receiver.publicKey,
-          createVaultData:await create_set_data(fee_receiver.publicKey),
+          createVaultData:await create_fee_account(fee_receiver.publicKey),
           feeVault:await feeVault(fee_receiver.publicKey),
           zebecVault:await zebecVault(sender.publicKey),
           dataAccount:dataAccount.publicKey,
@@ -316,7 +316,7 @@ import { PREFIX_TOKEN } from './src/Constants';
     it('Retrieve Fees',async()=>{
       const [fee_vault ,_un]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
       anchor.utils.bytes.utf8.encode(OPERATE),], program.programId)
-      const [create_set_data ,_]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
+      const [create_fee_account ,_]= await PublicKey.findProgramAddress([fee_receiver.publicKey.toBuffer(),
         anchor.utils.bytes.utf8.encode(OPERATEDATA),fee_vault.toBuffer()], program.programId)
         const fee_owner_token_account =await spl.getAssociatedTokenAddress(
           tokenMint.publicKey,
@@ -335,7 +335,7 @@ import { PREFIX_TOKEN } from './src/Constants';
       const tx = await program.rpc.withdrawFeesToken({
         accounts:{
           feeOwner: fee_receiver.publicKey,
-          createVaultData: create_set_data,
+          createVaultData: create_fee_account,
           feeVault: fee_vault,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram:spl.TOKEN_PROGRAM_ID,
