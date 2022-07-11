@@ -1,7 +1,7 @@
 import * as anchor from '@project-serum/anchor';
 import * as spl from '@solana/spl-token'
 import { airdropSol } from './src/utils';
-import { createMint,zebecVault,feeVault,create_set_data,withdrawData} from './src/Accounts';
+import { createMint,zebecVault,feeVault,create_fee_account,withdrawData} from './src/Accounts';
 import { PREFIX_TOKEN } from './src/Constants';
 // Configure the client to use the local cluster.
 const provider = anchor.Provider.env();
@@ -119,10 +119,10 @@ describe("multisig", () => {
       })
     it('Create Set Vault',async()=>{
         const fee_percentage=new anchor.BN(25)
-        const tx = await programZebec.rpc.createVault(fee_percentage,{
+        const tx = await programZebec.rpc.createFeeAccount(fee_percentage,{
           accounts:{
             feeVault: await feeVault(fee_receiver.publicKey),
-            createVaultData: await create_set_data(fee_receiver.publicKey),
+            createVaultData: await create_fee_account(fee_receiver.publicKey),
             owner: fee_receiver.publicKey,
             systemProgram: anchor.web3.SystemProgram.programId,
             rent:anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -269,7 +269,7 @@ describe("multisig", () => {
             isSigner: false,
         },
         {
-            pubkey: await create_set_data(fee_receiver.publicKey),
+            pubkey: await create_fee_account(fee_receiver.publicKey),
             isWritable: false,
             isSigner: false,
         },

@@ -12,11 +12,11 @@ pub use processor::*;
 #[program]
 mod zebec {
     use super::*;
-    pub fn create_vault(
-        ctx:Context<SetCreate>,
+    pub fn create_fee_account(
+        ctx:Context<InitializeFeeVault>,
         fee_percentage:u64
     )->Result<()>{
-        process_create_vault(ctx,fee_percentage)
+        process_create_fee_account(ctx,fee_percentage)
     }
     pub fn withdraw_fees_token(
         ctx: Context<WithdrawFeesToken>,

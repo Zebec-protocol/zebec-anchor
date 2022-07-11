@@ -3,8 +3,8 @@ use anchor_spl::{associated_token::AssociatedToken, token::{Mint, Token, TokenAc
 use crate::{utils::{create_transfer_signed,create_transfer_token_signed},constants::*};
 
 // Creating fee account. This is used by developers for developing their own protocol on Top of zebec and if they want to take fees from transaction they can use this function to create and set fee account.
-pub fn process_create_vault(
-    ctx:Context<SetCreate>,
+pub fn process_create_fee_account(
+    ctx:Context<InitializeFeeVault>,
     fee_percentage:u64
 )->Result<()>{
     let data_create = &mut ctx.accounts.create_vault_data;
@@ -41,7 +41,7 @@ pub fn process_withdraw_fees_sol(
 }
 
 #[derive(Accounts)]
-pub struct SetCreate<'info> {
+pub struct InitializeFeeVault<'info> {
     #[account(
         init,
         payer=owner,
