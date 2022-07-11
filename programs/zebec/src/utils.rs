@@ -81,21 +81,13 @@ pub fn create_transfer_token_signed<'a>
 
     Ok(())
 }
-pub fn get_zabec_vault_address_and_bump_seed(
-    sender: &Pubkey,
-    program_id: &Pubkey,
-) -> (Pubkey, u8) {
-    Pubkey::find_program_address(
-        &[
-            &sender.to_bytes(),
-        ],
-        program_id,
-    )
-}
-pub fn assert_keys_equal(key1: Pubkey, key2: Pubkey) -> Result<()> {
-    if key1 != key2 {
-        Err(ErrorCode::PublicKeyMismatch.into())
-    } else {
-        Ok(())
+pub fn check_overflow(start_time: u64, end_time: u64) -> Result<()> {
+    let now = Clock::get()?.unix_timestamp as u64; 
+    if now >= end_time{
+        return Err(ErrorCode::TimeEnd.into());
     }
+    if start_time >= end_time {
+        return Err(ErrorCode::InvalidInstruction.into());
+    }
+    Ok(())
 }
