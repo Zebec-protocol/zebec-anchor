@@ -262,13 +262,12 @@ pub struct Initialize<'info> {
 }
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
-    #[account(    
+    #[account(mut,   
         seeds = [
             sender.key().as_ref(),
         ],bump,
     )]
     /// CHECK: test
-    #[account(mut)]
     pub zebec_vault: AccountInfo<'info>,
     #[account(mut)]
     /// CHECK: test
@@ -301,6 +300,7 @@ pub struct Withdraw<'info> {
     pub create_vault_data: Account<'info,CreateVault>,
 
     #[account(
+        mut,
         constraint = create_vault_data.owner == fee_owner.key(),
         constraint = create_vault_data.vault_address == fee_vault.key(),
         seeds = [
@@ -350,13 +350,12 @@ pub struct Pause<'info> {
 }
 #[derive(Accounts)]
 pub struct Cancel<'info> {
-   #[account(   
+   #[account(mut,  
        seeds = [
            sender.key().as_ref(),
        ],bump,
    )]
    /// CHECK: test
-   #[account(mut)]
    pub zebec_vault: AccountInfo<'info>,
    #[account(mut)]
    pub sender: Signer<'info>,
@@ -388,7 +387,7 @@ pub struct Cancel<'info> {
    )]
    pub create_vault_data: Account<'info,CreateVault>,
  
-   #[account(
+   #[account(mut,
        constraint = create_vault_data.owner == fee_owner.key(),
        constraint = create_vault_data.vault_address == fee_vault.key(),
        seeds = [

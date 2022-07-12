@@ -60,7 +60,7 @@ describe('zebec native', () => {
     let now = Math.floor(new Date().getTime() / 1000)
     const startTime = new anchor.BN(now-1000) 
     const endTime=new anchor.BN(now+3600)
-    const amount=new anchor.BN(1000)
+    const amount=new anchor.BN(10000)
     const dataSize = 8+8+8+8+8+32+32+8+8+32+200
     const tx = await program.rpc.nativeStream(startTime,endTime,amount,{
       accounts:{
