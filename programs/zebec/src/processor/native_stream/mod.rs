@@ -146,6 +146,34 @@ pub fn process_cancel_stream(
     create_transfer_signed(data_account.to_account_info(),ctx.accounts.sender.to_account_info(), data_account.to_account_info().lamports())?;       
     Ok(())
 } 
+pub fn process_native_transfer(
+    ctx: Context<InstantTransfer>,
+    amount: u64,
+) ->Result<()>{
+    let withdraw_state = &mut ctx.accounts.withdraw_data;
+    let zebec_vault =&mut  ctx.accounts.zebec_vault;
+
+    if amount > zebec_vault.lamports()
+    {
+    return Err(ErrorCode::InsufficientFunds.into());
+    }
+    // if no any stream is started allow the instant transfer w/o further checks
+    if withdraw_state.amount ==0 
+    {
+    create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.receiver.to_account_info(),amount)?;
+    }
+    else
+    {
+    //Check remaining amount after transfer
+    let allowed_amt = zebec_vault.lamports() - amount;
+    //if remaining amount is lesser then the required amount for stream stop making withdrawal 
+    if allowed_amt < withdraw_state.amount {
+        return Err(ErrorCode::StreamedAmt.into()); 
+    }
+    create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.receiver.to_account_info(),amount)?;
+    }
+    Ok(())
+}
 pub fn process_native_withdrawal(
     ctx: Context<InitializerWithdrawal>,
     amount: u64,
@@ -369,9 +397,32 @@ pub struct Cancel<'info> {
        ],bump,       
    )]
    /// CHECK:
-   pub fee_vault:AccountInfo<'info>,
- 
+   pub fee_vault:AccountInfo<'info>, 
    pub system_program: Program<'info, System>,
+}
+#[derive(Accounts)]
+pub struct InstantTransfer<'info> {
+    #[account(    
+        seeds = [
+            sender.key().as_ref(),
+        ],bump,
+    )]
+    /// CHECK: test
+    #[account(mut)]
+    pub zebec_vault: AccountInfo<'info>,
+    #[account(mut)]
+    pub sender: Signer<'info>,
+    /// CHECK: test
+    #[account(mut)]
+    pub receiver: AccountInfo<'info>,
+    #[account(
+        seeds = [
+            PREFIX.as_bytes(),
+            sender.key().as_ref(),
+        ],bump,
+    )]
+    pub withdraw_data: Box<Account<'info, StreamedAmt>>,    
+    pub system_program: Program<'info, System>,
 }
 #[account]
 pub struct Stream {
@@ -387,13 +438,13 @@ pub struct Stream {
     pub fee_owner:Pubkey,
     pub paused_amt:u64,
 }
-    impl Stream {
-        pub fn allowed_amt(&self, now: u64) -> u64 {
-            (
-            ((now - self.start_time) as f64) / ((self.end_time - self.start_time) as f64) * self.amount as f64
-            ) as u64 
-        }
+impl Stream {
+    pub fn allowed_amt(&self, now: u64) -> u64 {
+        (
+        ((now - self.start_time) as f64) / ((self.end_time - self.start_time) as f64) * self.amount as f64
+        ) as u64 
     }
+}
 #[account]
 pub struct StreamedAmt {
     pub amount: u64,

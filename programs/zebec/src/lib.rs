@@ -57,6 +57,12 @@ mod zebec {
     ) -> Result<()> {
         process_cancel_stream(ctx)
     }
+    pub fn instant_native_transfer(
+        ctx:Context<InstantTransfer>,
+        amount:u64
+    )->Result<()>{
+        process_native_transfer(ctx, amount)
+    }
     pub fn native_withdrawal(
         ctx: Context<InitializerWithdrawal>,
         amount: u64,
@@ -91,6 +97,12 @@ mod zebec {
         ctx: Context<CancelTokenStream>,
     )   ->Result<()>{
         process_cancel_token_stream(ctx)
+    }
+    pub fn instant_token_transfer(
+        ctx: Context<TokenInstantTransfer>,
+        amount:u64,
+    )   ->Result<()>{
+        process_instant_token_transfer(ctx, amount)
     }
     pub fn token_withdrawal(
         ctx: Context<InitializerTokenWithdrawal>,

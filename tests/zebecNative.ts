@@ -19,7 +19,7 @@ const fee_receiver = new anchor.web3.Keypair();
 
 console.log("Sender key: "+sender.publicKey.toBase58())
 console.log("Receiver key: "+receiver.publicKey.toBase58())
-console.log("Pda key: "+dataAccount.publicKey.toBase58())
+console.log("DataAccount key: "+dataAccount.publicKey.toBase58())
 
 describe('zebec native', () => {
   it('Airdrop Solana', async()=>{
@@ -39,7 +39,7 @@ describe('zebec native', () => {
       signers:[fee_receiver],
       instructions:[],
   });
-  console.log("Your signature is ", tx);
+  console.log("Your transaction signature is ", tx);
   }
   )
   it('Deposit Sol', async () => {
@@ -126,6 +126,50 @@ describe('zebec native', () => {
     });
     console.log("Your transaction signature", tx);
   });
+  it('Instant Transfer', async () => {
+    const amount =new anchor.BN(25);
+    const tx = await program.rpc.instantNativeTransfer(amount,{
+      accounts:{
+        zebecVault: await zebecVault(sender.publicKey),
+        sender: sender.publicKey,
+        receiver:receiver.publicKey,
+        withdrawData:await withdrawData(PREFIX,sender.publicKey),
+        systemProgram: anchor.web3.SystemProgram.programId,
+      },
+      signers:[sender],
+    });
+    console.log("Your transaction signature", tx);
+  });
+  it("Cancel Sol Stream", async () => {
+      const tx = await program.rpc.cancelStream({
+        accounts: {
+          zebecVault: await zebecVault(sender.publicKey),
+          sender: sender.publicKey,
+          receiver: receiver.publicKey,
+          dataAccount: dataAccount.publicKey,
+          withdrawData:await withdrawData(PREFIX,sender.publicKey),
+          feeOwner: fee_receiver.publicKey,
+          createVaultData:await create_fee_account(fee_receiver.publicKey),
+          feeVault:await feeVault(fee_receiver.publicKey),
+          systemProgram: anchor.web3.SystemProgram.programId,
+        },
+        signers: [sender],
+      });
+      console.log("Your transaction signature", tx);
+  });
+  it("Initializer Withdrawal Sol", async () => {
+    const amount = new anchor.BN(100);
+    const tx = await program.rpc.nativeWithdrawal(amount, {
+      accounts: {
+        zebecVault: await zebecVault(sender.publicKey),
+        withdrawData: await withdrawData(PREFIX,sender.publicKey),
+        systemProgram: anchor.web3.SystemProgram.programId,
+        sender: sender.publicKey,
+      },
+      signers: [sender],
+    });
+    console.log("Your transaction signature", tx);
+  });
   it('Retrieve Fees',async()=>{
     const tx = await program.rpc.withdrawFeesSol({
       accounts:{
@@ -138,7 +182,7 @@ describe('zebec native', () => {
       signers:[fee_receiver],
       instructions:[],
   });
-  console.log("Your signature is ", tx);
+  console.log("Your transaction signature is ", tx);
   }
   )
   });

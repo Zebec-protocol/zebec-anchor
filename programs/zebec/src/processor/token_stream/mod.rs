@@ -234,6 +234,53 @@ pub fn process_token_withdrawal(
     }
     Ok(())
 }
+pub fn process_instant_token_transfer(
+    ctx: Context<TokenInstantTransfer>,
+    amount: u64,
+) -> Result<()>{
+    let withdraw_state = &mut ctx.accounts.withdraw_data;
+    let vault_token_account=&mut ctx.accounts.pda_account_token_account;
+    
+    if amount > vault_token_account.amount
+    {
+    return Err(ErrorCode::InsufficientFunds.into());
+    }
+     //vault signer seeds
+     let bump = ctx.bumps.get("zebec_vault").unwrap().to_le_bytes();            
+     let inner = vec![
+         ctx.accounts.source_account.key.as_ref(),
+         bump.as_ref(),
+     ];
+     let outer = vec![inner.as_slice()];
+    // if no any stream is started allow the instant transfer w/o further checks
+    if withdraw_state.amount ==0 
+    {
+     //transfering amount
+     create_transfer_token_signed(ctx.accounts.token_program.to_account_info(), 
+     ctx.accounts.pda_account_token_account.to_account_info(),
+     ctx.accounts.dest_token_account.to_account_info(),
+     ctx.accounts.zebec_vault.to_account_info(),
+     outer.clone(),
+     amount)?;
+    }
+    else
+    {
+     //Check remaining amount after withdrawal
+    let allowed_amt = vault_token_account.amount - amount;
+     //if remaining amount is lesser then the required amount for stream stop making withdrawal 
+    if allowed_amt < withdraw_state.amount {
+        return Err(ErrorCode::StreamedAmt.into()); 
+    }
+    //transfering 
+    create_transfer_token_signed(ctx.accounts.token_program.to_account_info(), 
+    ctx.accounts.pda_account_token_account.to_account_info(),
+    ctx.accounts.dest_token_account.to_account_info(),
+    ctx.accounts.zebec_vault.to_account_info(),
+    outer.clone(),
+    amount)?;
+    }
+    Ok(())
+}
 
 #[derive(Accounts)]
 pub struct TokenStream<'info> {
@@ -450,6 +497,54 @@ pub struct TokenWithdrawStream<'info> {
         associated_token::authority = fee_vault,
     )]
     fee_reciever_token_account: Box<Account<'info, TokenAccount>>,
+}
+#[derive(Accounts)]
+pub struct TokenInstantTransfer<'info> {
+
+     //masterPDA
+    #[account(
+        seeds = [
+            source_account.key().as_ref(),
+        ],bump,
+    )]
+    /// CHECK:
+    pub zebec_vault: AccountInfo<'info>,
+    /// CHECK:
+    #[account(mut)]
+    pub dest_account: AccountInfo<'info>,
+    //User Account
+    #[account(mut)]
+    pub source_account: Signer<'info>,
+    //withdraw data
+    #[account(
+        mut,
+        seeds = [
+            PREFIX_TOKEN.as_bytes(),
+            source_account.key().as_ref(),
+            mint.key().as_ref(),
+        ],bump,
+    )]
+    pub withdraw_data: Account<'info, TokenWithdraw>,
+     //Program Accounts
+    pub system_program: Program<'info, System>,
+    pub token_program:Program<'info,Token>,
+    pub associated_token_program:Program<'info,AssociatedToken>,
+    pub rent: Sysvar<'info, Rent>,
+    //Mint and Token Accounts
+    pub mint:Account<'info,Mint>,
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = zebec_vault,
+    )]
+    pda_account_token_account: Box<Account<'info, TokenAccount>>,
+    #[account(
+        init_if_needed,
+        payer = dest_account,
+        associated_token::mint = mint,
+        associated_token::authority = dest_account,
+    )]
+    dest_token_account: Box<Account<'info, TokenAccount>>,
 }
 #[derive(Accounts)]
 pub struct PauseTokenStream<'info> {
