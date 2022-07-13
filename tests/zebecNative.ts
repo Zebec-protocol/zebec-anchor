@@ -1,6 +1,6 @@
 import * as anchor from '@project-serum/anchor';
 import { feeVault,create_fee_account,zebecVault,withdrawData } from './src/Accounts';
-import { airdropSol } from './src/utils';
+import { airdropDelay, airdropSol,getClusterTime } from './src/utils';
 import {PREFIX} from './src/Constants'
 // Configure the client to use the local cluster.
 const provider = anchor.Provider.env();
@@ -43,7 +43,7 @@ describe('zebec native', () => {
   }
   )
   it('Deposit Sol', async () => {
-    const amount=new anchor.BN(1000000)
+    const amount=new anchor.BN(10000000)
     const tx = await program.rpc.depositSol(amount,{
       accounts:{
         zebecVault: await zebecVault(sender.publicKey),
@@ -57,10 +57,10 @@ describe('zebec native', () => {
     console.log("Your transaction signature", tx);
   });
   it('Stream Sol', async () => {
-    let now = Math.floor(new Date().getTime() / 1000)
-    const startTime = new anchor.BN(now-1000) 
-    const endTime=new anchor.BN(now+3600)
-    const amount=new anchor.BN(10000)
+    let now = await getClusterTime(provider.connection)
+    const startTime =new anchor.BN(now-10)
+    const endTime=new anchor.BN(now+40)
+    const amount=new anchor.BN(500000)
     const dataSize = 8+8+8+8+8+32+32+8+8+32+200
     const tx = await program.rpc.nativeStream(startTime,endTime,amount,{
       accounts:{
@@ -81,6 +81,7 @@ describe('zebec native', () => {
       ],
       signers:[sender,dataAccount],
     });
+    await airdropDelay(50000);
     console.log("Your transaction signature", tx);
   });
   it('Withdraw Sol', async () => {
@@ -101,6 +102,7 @@ describe('zebec native', () => {
     console.log("Your transaction signature", tx);
   });
   it('Pause Stream', async () => {
+    await airdropDelay(1000000)
     const tx = await program.rpc.pauseStream({
       accounts:{
         sender: sender.publicKey,

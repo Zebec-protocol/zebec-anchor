@@ -137,7 +137,7 @@ pub fn process_cancel_token_stream(
     let mut allowed_amt = data_account.allowed_amt(now);
     if now >= data_account.end_time {
         msg!("Stream already completed");
-        return Err(ErrorCode::StreamNotStarted.into());
+        return Err(ErrorCode::StreamAlreadyCompleted.into());
     }
     //if paused only the amount equal to withdraw limit is allowed
     if data_account.paused == 1  
