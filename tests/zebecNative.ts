@@ -1,6 +1,6 @@
 import * as anchor from '@project-serum/anchor';
 import { feeVault,create_fee_account,zebecVault,withdrawData } from './src/Accounts';
-import { airdropDelay, airdropSol,getClusterTime,solFromProvider } from './src/utils';
+import { airdropSol,getClusterTime,solFromProvider } from './src/utils';
 import {PREFIX} from './src/Constants'
 // Configure the client to use the local cluster.
 const provider = anchor.Provider.env();
