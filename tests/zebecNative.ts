@@ -24,6 +24,7 @@ console.log("DataAccount key: "+dataAccount.publicKey.toBase58())
 describe('zebec native', () => {
   it('Airdrop Solana', async()=>{
     await airdropSol(program.provider.connection,sender.publicKey)
+    await airdropSol(program.provider.connection,sender.publicKey)
     await airdropSol(program.provider.connection,fee_receiver.publicKey)
   })
   it('Create Set Vault',async()=>{
@@ -43,7 +44,7 @@ describe('zebec native', () => {
   }
   )
   it('Deposit Sol', async () => {
-    const amount=new anchor.BN(10000000)
+    const amount=new anchor.BN(anchor.web3.LAMPORTS_PER_SOL)
     const tx = await program.rpc.depositSol(amount,{
       accounts:{
         zebecVault: await zebecVault(sender.publicKey),
@@ -57,10 +58,9 @@ describe('zebec native', () => {
     console.log("Your transaction signature", tx);
   });
   it('Stream Sol', async () => {
-    let now = await getClusterTime(provider.connection)
-    const startTime =new anchor.BN(now-10)
-    const endTime=new anchor.BN(now+40)
-    const amount=new anchor.BN(500000)
+    const startTime = new anchor.BN(await getClusterTime(provider.connection)) 
+    const endTime=new anchor.BN(await getClusterTime(provider.connection)+10)
+    const amount=new anchor.BN(anchor.web3.LAMPORTS_PER_SOL)
     const dataSize = 8+8+8+8+8+32+32+8+8+32+200
     const tx = await program.rpc.nativeStream(startTime,endTime,amount,{
       accounts:{
@@ -81,7 +81,7 @@ describe('zebec native', () => {
       ],
       signers:[sender,dataAccount],
     });
-    await airdropDelay(50000);
+    await airdropDelay(10000);
     console.log("Your transaction signature", tx);
   });
   it('Withdraw Sol', async () => {
