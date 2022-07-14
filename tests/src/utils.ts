@@ -10,3 +10,12 @@ export const airdropSol = async (connection:anchor.web3.Connection,wallet_addres
     const delay= new Promise( resolve => setTimeout(resolve, ms) );
     return delay
   }
+  export const getClusterTime = async (connection:anchor.web3.Connection) => {
+    const parsedClock = await connection.getParsedAccountInfo(
+      anchor.web3.SYSVAR_CLOCK_PUBKEY
+    );
+    const parsedClockAccount = (parsedClock.value!.data as anchor.web3.ParsedAccountData)
+      .parsed;
+    const clusterTimeStamp = parsedClockAccount.info.unixTimestamp;
+    return clusterTimeStamp;
+  };

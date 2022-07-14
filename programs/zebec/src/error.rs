@@ -30,6 +30,8 @@ pub enum ErrorCode {
     StreamAlreadyCreated,
     #[msg("Stream has not been started")]
     StreamNotStarted,
+    #[msg("Stream already completed")]
+    StreamAlreadyCompleted,
     #[msg("Cannot withdraw streaming amount")]
     StreamedAmt,
     #[msg("cannot cancel this transaction")]

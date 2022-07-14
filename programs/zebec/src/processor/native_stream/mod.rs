@@ -66,7 +66,6 @@ pub fn process_withdraw_stream(
     create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.receiver.to_account_info(),receiver_amount)?;
     //commission
     create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.fee_vault.to_account_info(),comission)?;
-
     data_account.withdrawn= data_account.withdrawn.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
     if data_account.withdrawn == data_account.amount { 
         create_transfer_signed(data_account.to_account_info(),ctx.accounts.sender.to_account_info(), data_account.to_account_info().lamports())?;
@@ -111,8 +110,7 @@ pub fn process_cancel_stream(
     //Calculated Amount
     let mut allowed_amt = data_account.allowed_amt(now);
     if now >= data_account.end_time {
-        msg!("Stream already completed");
-        return Err(ErrorCode::StreamNotStarted.into());
+        return Err(ErrorCode::StreamAlreadyCompleted.into());
     }
     //if paused only the amount equal to withdraw limit is allowed
     if data_account.paused == 1 
@@ -262,13 +260,12 @@ pub struct Initialize<'info> {
 }
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
-    #[account(    
+    #[account(mut,   
         seeds = [
             sender.key().as_ref(),
         ],bump,
     )]
     /// CHECK: test
-    #[account(mut)]
     pub zebec_vault: AccountInfo<'info>,
     #[account(mut)]
     /// CHECK: test
@@ -282,6 +279,7 @@ pub struct Withdraw<'info> {
     )]
     pub data_account:  Account<'info, Stream>,
     #[account(
+        mut,
         seeds = [
             PREFIX.as_bytes(),
             sender.key().as_ref(),
@@ -301,6 +299,7 @@ pub struct Withdraw<'info> {
     pub create_vault_data: Account<'info,CreateVault>,
 
     #[account(
+        mut,
         constraint = create_vault_data.owner == fee_owner.key(),
         constraint = create_vault_data.vault_address == fee_vault.key(),
         seeds = [
@@ -350,13 +349,12 @@ pub struct Pause<'info> {
 }
 #[derive(Accounts)]
 pub struct Cancel<'info> {
-   #[account(   
+   #[account(mut,  
        seeds = [
            sender.key().as_ref(),
        ],bump,
    )]
    /// CHECK: test
-   #[account(mut)]
    pub zebec_vault: AccountInfo<'info>,
    #[account(mut)]
    pub sender: Signer<'info>,
@@ -370,6 +368,7 @@ pub struct Cancel<'info> {
    )]
    pub data_account:  Account<'info, Stream>,
    #[account(
+    mut,
     seeds = [
         PREFIX.as_bytes(),
         sender.key().as_ref(),
@@ -388,7 +387,7 @@ pub struct Cancel<'info> {
    )]
    pub create_vault_data: Account<'info,CreateVault>,
  
-   #[account(
+   #[account(mut,
        constraint = create_vault_data.owner == fee_owner.key(),
        constraint = create_vault_data.vault_address == fee_vault.key(),
        seeds = [
