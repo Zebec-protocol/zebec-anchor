@@ -19,3 +19,13 @@ export const airdropSol = async (connection:anchor.web3.Connection,wallet_addres
     const clusterTimeStamp = parsedClockAccount.info.unixTimestamp;
     return clusterTimeStamp;
   };
+  export const solFromProvider = async (provider:anchor.Provider,receiver:PublicKey,amount:number)=>
+  {
+    let txFund = new anchor.web3.Transaction();
+    txFund.add(anchor.web3.SystemProgram.transfer({
+        fromPubkey: provider.wallet.publicKey,
+        toPubkey: receiver,
+        lamports: amount * anchor.web3.LAMPORTS_PER_SOL,
+    }));
+    const sigTxFund = await provider.send(txFund);
+  }
