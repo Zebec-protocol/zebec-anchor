@@ -296,7 +296,7 @@ pub struct TokenStream<'info> {
         ],bump,
         space=8+8,
     )]
-    pub withdraw_data: Account<'info, TokenWithdraw>,
+    pub withdraw_data: Box<Account<'info, TokenWithdraw>>,
     /// CHECK:
     pub fee_owner:AccountInfo<'info>,
     #[account(
@@ -387,7 +387,7 @@ pub struct InitializerTokenWithdrawal<'info> {
         ],bump,
         space=8+8,
     )]
-    pub withdraw_data: Account<'info, TokenWithdraw>,
+    pub withdraw_data: Box<Account<'info, TokenWithdraw>>,
     #[account(mut)]
     pub source_account: Signer<'info>,
     //Program Accounts
@@ -469,7 +469,7 @@ pub struct TokenWithdrawStream<'info> {
             mint.key().as_ref(),
         ],bump,
     )]
-    pub withdraw_data: Account<'info, TokenWithdraw>,
+    pub withdraw_data: Box<Account<'info, TokenWithdraw>>,
      //Program Accounts
     pub system_program: Program<'info, System>,
     pub token_program:Program<'info,Token>,
@@ -517,14 +517,16 @@ pub struct TokenInstantTransfer<'info> {
     pub source_account: Signer<'info>,
     //withdraw data
     #[account(
-        mut,
+        init_if_needed,
+        payer=source_account,
         seeds = [
             PREFIX_TOKEN.as_bytes(),
             source_account.key().as_ref(),
             mint.key().as_ref(),
         ],bump,
+        space=8+8,
     )]
-    pub withdraw_data: Account<'info, TokenWithdraw>,
+    pub withdraw_data: Box<Account<'info, TokenWithdraw>>,
      //Program Accounts
     pub system_program: Program<'info, System>,
     pub token_program:Program<'info,Token>,
@@ -611,7 +613,7 @@ pub struct CancelTokenStream<'info> {
            mint.key().as_ref(),
        ],bump,
    )]
-   pub withdraw_data: Account<'info, TokenWithdraw>,
+   pub withdraw_data: Box<Account<'info, TokenWithdraw>>,
     //Program Accounts
    pub system_program: Program<'info, System>,
    pub token_program:Program<'info,Token>,
