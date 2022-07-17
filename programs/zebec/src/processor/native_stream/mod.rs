@@ -228,7 +228,7 @@ pub struct Initialize<'info> {
             PREFIX.as_bytes(),
             sender.key().as_ref(),
         ],bump,
-        space=200+1+8,
+        space=8+8,
     )]
     pub withdraw_data: Box<Account<'info, StreamedAmt>>,
      /// CHECK:
@@ -331,7 +331,7 @@ pub struct InitializerWithdrawal<'info> {
             PREFIX.as_bytes(),
             sender.key().as_ref(),
         ],bump,
-        space=200+1+8,
+        space=8+8,
     )]
     pub withdraw_data: Box<Account<'info, StreamedAmt>>,     
     pub system_program: Program<'info, System>,
@@ -415,12 +415,15 @@ pub struct InstantTransfer<'info> {
     #[account(mut)]
     pub receiver: AccountInfo<'info>,
     #[account(
+        init_if_needed,
+        payer=sender,
         seeds = [
             PREFIX.as_bytes(),
             sender.key().as_ref(),
         ],bump,
+        space=8+8,
     )]
-    pub withdraw_data: Box<Account<'info, StreamedAmt>>,    
+    pub withdraw_data: Box<Account<'info, StreamedAmt>>, 
     pub system_program: Program<'info, System>,
 }
 #[account]
@@ -447,5 +450,4 @@ impl Stream {
 #[account]
 pub struct StreamedAmt {
     pub amount: u64,
-    pub counter: u8
 }
