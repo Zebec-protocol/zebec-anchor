@@ -7,7 +7,7 @@ import { PREFIX_TOKEN } from './src/Constants';
 const provider = anchor.Provider.env();
 anchor.setProvider(provider)
 // Program details
-const programId = new anchor.web3.PublicKey("3svmYpJGih9yxkgqpExNdQZLKQ7Wu5SEjaVUbmbytUJg");
+const programId = new anchor.web3.PublicKey("14NJEfpvoq6PywHdwFhXcfnHTsPUK3cScCaezKBSDWLd");
 const idl = JSON.parse(
 require("fs").readFileSync("./target/idl/zebec.json", "utf8")
 );
@@ -122,7 +122,7 @@ describe("multisig", () => {
         const tx = await programZebec.rpc.createFeeAccount(fee_percentage,{
           accounts:{
             feeVault: await feeVault(fee_receiver.publicKey),
-            createVaultData: await create_fee_account(fee_receiver.publicKey),
+            vaultData: await create_fee_account(fee_receiver.publicKey),
             owner: fee_receiver.publicKey,
             systemProgram: anchor.web3.SystemProgram.programId,
             rent:anchor.web3.SYSVAR_RENT_PUBKEY,

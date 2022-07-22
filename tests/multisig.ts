@@ -7,7 +7,7 @@ import { airdropSol } from './src/utils';
 const provider = anchor.Provider.env();
 anchor.setProvider(provider)
 // Program details
-const programId = new anchor.web3.PublicKey("3svmYpJGih9yxkgqpExNdQZLKQ7Wu5SEjaVUbmbytUJg");
+const programId = new anchor.web3.PublicKey("14NJEfpvoq6PywHdwFhXcfnHTsPUK3cScCaezKBSDWLd");
 const idl = JSON.parse(
 require("fs").readFileSync("./target/idl/zebec.json", "utf8")
 );
@@ -43,6 +43,8 @@ describe("multisig", () => {
             [multisig.publicKey.toBuffer()],
             program.programId
         );
+        // owners - number of multisig owners
+        // threshold - number of signers required to confirm the transaction
         await program.rpc.createMultisig(owners, threshold, nonce, {
         accounts: {
             multisig: multisig.publicKey,
@@ -73,7 +75,7 @@ describe("multisig", () => {
         const tx = await programZebec.rpc.createFeeAccount(fee_percentage,{
           accounts:{
             feeVault: await feeVault(fee_receiver.publicKey),
-            createVaultData: await create_fee_account(fee_receiver.publicKey),
+            vaultData: await create_fee_account(fee_receiver.publicKey),
             owner: fee_receiver.publicKey,
             systemProgram: anchor.web3.SystemProgram.programId,
             rent:anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -84,6 +86,7 @@ describe("multisig", () => {
       console.log("Your signature is ", tx);
     })
     it('Deposit Sol', async () => {
+        // multisigSigner is sender, all the transaction will be signed from multisigSigner account
         const [multisigSigner, nonce] =
         await anchor.web3.PublicKey.findProgramAddress(
             [multisig.publicKey.toBuffer()],

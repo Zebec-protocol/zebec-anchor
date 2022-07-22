@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::{utils::{create_transfer,create_transfer_signed,check_overflow},error::ErrorCode,constants::*,create_fee_account::CreateVault};
+use crate::{utils::{create_transfer,create_transfer_signed,check_overflow},error::ErrorCode,constants::*,create_fee_account::Vault};
 
 pub fn process_deposit_sol(
     ctx: Context<InitializeMasterPda>,
@@ -60,7 +60,7 @@ pub fn process_withdraw_stream(
     {
         return Err(ErrorCode::InsufficientFunds.into());
     }
-    let comission: u64 = ctx.accounts.create_vault_data.fee_percentage*allowed_amt/10000; 
+    let comission: u64 = ctx.accounts.vault_data.fee_percentage*allowed_amt/10000; 
     let receiver_amount:u64=allowed_amt-comission;
     //receiver amount
     create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.receiver.to_account_info(),receiver_amount)?;
@@ -131,7 +131,7 @@ pub fn process_cancel_stream(
         return Err(ErrorCode::InsufficientFunds.into());
     }
     //commission is calculated
-    let comission: u64 = ctx.accounts.create_vault_data.fee_percentage*allowed_amt/10000;
+    let comission: u64 = ctx.accounts.vault_data.fee_percentage*allowed_amt/10000;
     let receiver_amount:u64=allowed_amt-comission;
     //transfering allowable amount to the receiver
     //receiver amount
@@ -240,11 +240,11 @@ pub struct Initialize<'info> {
              fee_vault.key().as_ref(),
          ],bump
      )]
-    pub create_vault_data: Box<Account<'info,CreateVault>>,
+    pub vault_data: Box<Account<'info,Vault>>,
  
     #[account(
-         constraint = create_vault_data.owner == fee_owner.key(),
-         constraint = create_vault_data.vault_address == fee_vault.key(),
+         constraint = vault_data.owner == fee_owner.key(),
+         constraint = vault_data.vault_address == fee_vault.key(),
          seeds = [
              fee_owner.key().as_ref(),
              OPERATE.as_bytes(),           
@@ -296,12 +296,12 @@ pub struct Withdraw<'info> {
             fee_vault.key().as_ref(),
         ],bump
     )]
-    pub create_vault_data: Account<'info,CreateVault>,
+    pub vault_data: Account<'info,Vault>,
 
     #[account(
         mut,
-        constraint = create_vault_data.owner == fee_owner.key(),
-        constraint = create_vault_data.vault_address == fee_vault.key(),
+        constraint = vault_data.owner == fee_owner.key(),
+        constraint = vault_data.vault_address == fee_vault.key(),
         seeds = [
             fee_owner.key().as_ref(),
             OPERATE.as_bytes(),           
@@ -385,11 +385,11 @@ pub struct Cancel<'info> {
            fee_vault.key().as_ref(),
        ],bump
    )]
-   pub create_vault_data: Account<'info,CreateVault>,
+   pub vault_data: Account<'info,Vault>,
  
    #[account(mut,
-       constraint = create_vault_data.owner == fee_owner.key(),
-       constraint = create_vault_data.vault_address == fee_vault.key(),
+       constraint = vault_data.owner == fee_owner.key(),
+       constraint = vault_data.vault_address == fee_vault.key(),
        seeds = [
            fee_owner.key().as_ref(),
            OPERATE.as_bytes(),          

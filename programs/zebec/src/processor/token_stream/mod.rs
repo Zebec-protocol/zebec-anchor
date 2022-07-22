@@ -1,7 +1,6 @@
 use anchor_lang::prelude::*;
-use crate::{utils::{create_transfer_signed,create_transfer_token_signed,create_transfer_token,check_overflow},error::ErrorCode,constants::*,create_fee_account::CreateVault};
+use crate::{utils::{create_transfer_signed,create_transfer_token_signed,create_transfer_token,check_overflow},error::ErrorCode,constants::*,create_fee_account::Vault};
 use anchor_spl::{associated_token::AssociatedToken, token::{Mint, Token, TokenAccount,}};
-declare_id!("3svmYpJGih9yxkgqpExNdQZLKQ7Wu5SEjaVUbmbytUJg");
 
 pub fn process_deposit_token(
     ctx: Context<TokenDeposit>,
@@ -68,7 +67,7 @@ pub fn process_withdraw_token_stream(
     {
         return Err(ErrorCode::InsufficientFunds.into());
     }
-    let comission: u64 = ctx.accounts.create_vault_data.fee_percentage*allowed_amt/10000; 
+    let comission: u64 = ctx.accounts.vault_data.fee_percentage*allowed_amt/10000; 
     let receiver_amount:u64=allowed_amt-comission;
     //vault signer seeds
     let bump = ctx.bumps.get("zebec_vault").unwrap().to_le_bytes();             
@@ -156,7 +155,7 @@ pub fn process_cancel_token_stream(
         return Err(ErrorCode::InsufficientFunds.into());
     }
     //commission is calculated
-    let comission: u64 = ctx.accounts.create_vault_data.fee_percentage*allowed_amt/10000; 
+    let comission: u64 = ctx.accounts.vault_data.fee_percentage*allowed_amt/10000; 
     let receiver_amount:u64=allowed_amt-comission;
     //vault signer seeds
     let bump = ctx.bumps.get("zebec_vault").unwrap().to_le_bytes();     
@@ -306,11 +305,13 @@ pub struct TokenStream<'info> {
             fee_vault.key().as_ref(),
         ],bump
     )]
-    pub create_vault_data: Account<'info,CreateVault>,
+    pub vault_data: Account<'info,Vault>,
 
     #[account(
-        constraint = create_vault_data.owner == fee_owner.key(),
-        constraint = create_vault_data.vault_address == fee_vault.key(),
+        constraint = vault_data
+.owner == fee_owner.key(),
+        constraint = vault_data
+.vault_address == fee_vault.key(),
         seeds = [
             fee_owner.key().as_ref(),
             OPERATE.as_bytes(),           
@@ -439,11 +440,13 @@ pub struct TokenWithdrawStream<'info> {
             fee_vault.key().as_ref(),
         ],bump
     )]
-    pub create_vault_data: Account<'info,CreateVault>,
+    pub vault_data: Account<'info,Vault>,
 
     #[account(
-        constraint = create_vault_data.owner == fee_owner.key(),
-        constraint = create_vault_data.vault_address == fee_vault.key(),
+        constraint = vault_data
+.owner == fee_owner.key(),
+        constraint = vault_data
+.vault_address == fee_vault.key(),
         seeds = [
             fee_owner.key().as_ref(),
             OPERATE.as_bytes(),           
@@ -454,7 +457,6 @@ pub struct TokenWithdrawStream<'info> {
    
     //data account
     #[account(mut,
-            owner=id(),
             constraint= data_account.sender==source_account.key(),
             constraint= data_account.receiver==dest_account.key(),    
             constraint= data_account.fee_owner==fee_owner.key(),           
@@ -501,7 +503,6 @@ pub struct TokenWithdrawStream<'info> {
 #[derive(Accounts)]
 pub struct TokenInstantTransfer<'info> {
 
-     //masterPDA
     #[account(
         seeds = [
             source_account.key().as_ref(),
@@ -585,10 +586,12 @@ pub struct CancelTokenStream<'info> {
            fee_vault.key().as_ref(),
        ],bump
    )]
-   pub create_vault_data: Account<'info,CreateVault>, 
+   pub vault_data: Account<'info,Vault>, 
    #[account(
-       constraint = create_vault_data.owner == fee_owner.key(),
-       constraint = create_vault_data.vault_address == fee_vault.key(),
+       constraint = vault_data
+.owner == fee_owner.key(),
+       constraint = vault_data
+.vault_address == fee_vault.key(),
        seeds = [
            fee_owner.key().as_ref(),
            OPERATE.as_bytes(),          
@@ -598,7 +601,6 @@ pub struct CancelTokenStream<'info> {
    pub fee_vault:AccountInfo<'info>, 
    //data account
    #[account(mut,
-           owner=id(),
            constraint= data_account.sender==source_account.key(),
            constraint= data_account.receiver==dest_account.key(),   
            constraint= data_account.fee_owner==fee_owner.key(),          

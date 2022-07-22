@@ -5,7 +5,7 @@ import {PREFIX} from './src/Constants'
 // Configure the client to use the local cluster.
 const provider = anchor.Provider.env();
 anchor.setProvider(provider)
-const programId = new anchor.web3.PublicKey("3svmYpJGih9yxkgqpExNdQZLKQ7Wu5SEjaVUbmbytUJg");
+const programId = new anchor.web3.PublicKey("14NJEfpvoq6PywHdwFhXcfnHTsPUK3cScCaezKBSDWLd");
 const idl = JSON.parse(
   require("fs").readFileSync("./target/idl/zebec.json", "utf8")
 );
@@ -23,15 +23,15 @@ console.log("DataAccount key: "+dataAccount.publicKey.toBase58())
 
 describe('zebec native', () => {
   it('Airdrop Solana', async()=>{
-    await solFromProvider(provider,sender.publicKey,3);
-    await airdropSol(program.provider.connection,fee_receiver.publicKey)
+    await solFromProvider(program.provider,sender.publicKey,2);
+    await solFromProvider(program.provider,fee_receiver.publicKey,1)
   })
   it('Create Set Vault',async()=>{
     const fee_percentage=new anchor.BN(25)
     const tx = await program.rpc.createFeeAccount(fee_percentage,{
       accounts:{
         feeVault: await feeVault(fee_receiver.publicKey),
-        createVaultData: await create_fee_account(fee_receiver.publicKey),
+        vaultData: await create_fee_account(fee_receiver.publicKey),
         owner: fee_receiver.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         rent:anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -67,7 +67,7 @@ describe('zebec native', () => {
         dataAccount: dataAccount.publicKey,
         withdrawData: await withdrawData(PREFIX,sender.publicKey),
         feeOwner:fee_receiver.publicKey,
-        createVaultData:await create_fee_account(fee_receiver.publicKey),
+        vaultData:await create_fee_account(fee_receiver.publicKey),
         feeVault:await feeVault(fee_receiver.publicKey),
         systemProgram: anchor.web3.SystemProgram.programId,
         sender: sender.publicKey,
@@ -92,7 +92,7 @@ describe('zebec native', () => {
         dataAccount:dataAccount.publicKey,
         withdrawData:await withdrawData(PREFIX,sender.publicKey),
         feeOwner:fee_receiver.publicKey,
-        createVaultData:await create_fee_account(fee_receiver.publicKey),
+        vaultData:await create_fee_account(fee_receiver.publicKey),
         feeVault:await feeVault(fee_receiver.publicKey),
         systemProgram: anchor.web3.SystemProgram.programId,
       },
@@ -149,7 +149,7 @@ describe('zebec native', () => {
           dataAccount: dataAccount.publicKey,
           withdrawData:await withdrawData(PREFIX,sender.publicKey),
           feeOwner: fee_receiver.publicKey,
-          createVaultData:await create_fee_account(fee_receiver.publicKey),
+          vaultData:await create_fee_account(fee_receiver.publicKey),
           feeVault:await feeVault(fee_receiver.publicKey),
           systemProgram: anchor.web3.SystemProgram.programId,
         },
@@ -174,7 +174,7 @@ describe('zebec native', () => {
     const tx = await program.rpc.withdrawFeesSol({
       accounts:{
         feeOwner: fee_receiver.publicKey,
-        createVaultData: await create_fee_account(fee_receiver.publicKey),
+        vaultData: await create_fee_account(fee_receiver.publicKey),
         feeVault: await feeVault(fee_receiver.publicKey),
         systemProgram: anchor.web3.SystemProgram.programId,
         rent:anchor.web3.SYSVAR_RENT_PUBKEY,

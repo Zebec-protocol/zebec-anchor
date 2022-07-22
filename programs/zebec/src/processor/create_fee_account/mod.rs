@@ -7,7 +7,7 @@ pub fn process_create_fee_account(
     ctx:Context<InitializeFeeVault>,
     fee_percentage:u64
 )->Result<()>{
-    let data_create = &mut ctx.accounts.create_vault_data;
+    let data_create = &mut ctx.accounts.vault_data;
     data_create.owner=ctx.accounts.owner.key();
     data_create.vault_address=ctx.accounts.fee_vault.key();
     data_create.fee_percentage=fee_percentage; 
@@ -16,7 +16,6 @@ pub fn process_create_fee_account(
 pub fn process_withdraw_fees_token(
     ctx: Context<WithdrawFeesToken>,
 )->Result<()>{
-    //data_account signer seeds
     let bump = ctx.bumps.get("fee_vault").unwrap().to_le_bytes();          
     let inner = vec![
         ctx.accounts.fee_owner.key.as_ref(),
@@ -64,7 +63,7 @@ pub struct InitializeFeeVault<'info> {
         space=8+32+32+8,
     )]
     /// CHECK:
-    pub create_vault_data: Account<'info,CreateVault>,
+    pub vault_data: Account<'info,Vault>,
     #[account(mut)]
     pub owner: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -80,11 +79,11 @@ pub struct WithdrawFeesSol<'info> {
             fee_vault.key().as_ref(),
         ],bump
     )]
-    pub create_vault_data: Account<'info,CreateVault>,
+    pub vault_data: Account<'info,Vault>,
 
     #[account(mut,
-        constraint = create_vault_data.owner == fee_owner.key(),
-        constraint = create_vault_data.vault_address == fee_vault.key(),
+        constraint = vault_data.owner == fee_owner.key(),
+        constraint = vault_data.vault_address == fee_vault.key(),
         seeds = [
             fee_owner.key().as_ref(),
             OPERATE.as_bytes(),           
@@ -107,11 +106,11 @@ pub struct WithdrawFeesToken<'info> {
             fee_vault.key().as_ref(),
         ],bump
     )]
-    pub create_vault_data: Account<'info,CreateVault>,
+    pub vault_data: Account<'info,Vault>,
 
     #[account(mut,
-        constraint = create_vault_data.owner == fee_owner.key(),
-        constraint = create_vault_data.vault_address == fee_vault.key(),
+        constraint = vault_data.owner == fee_owner.key(),
+        constraint = vault_data.vault_address == fee_vault.key(),
         seeds = [
             fee_owner.key().as_ref(),
             OPERATE.as_bytes(),           
@@ -142,7 +141,7 @@ pub struct WithdrawFeesToken<'info> {
     fee_owner_token_account: Box<Account<'info, TokenAccount>>,
 }
 #[account]
-pub struct CreateVault
+pub struct Vault
 {
     pub vault_address:Pubkey,
     pub owner:Pubkey,
