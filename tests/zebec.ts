@@ -50,7 +50,7 @@ import { PREFIX_TOKEN } from './src/Constants';
     });
     console.log("Your signature for create vault is ", tx);
     
-    const data_create_set = await program.account.createVault.fetch(
+    const data_create_set = await program.account.vault.fetch(
       await create_fee_account(fee_receiver.publicKey)
     );    
     assert.equal(data_create_set.vaultAddress.toString(),(await feeVault(fee_receiver.publicKey)).toString());
@@ -150,70 +150,70 @@ import { PREFIX_TOKEN } from './src/Constants';
       );
       assert.equal(data_account.paused.toString(),"1");  
     });
-    // it('Withdraw Token Stream',async()=>{
-    //   const pda_token_account =await spl.getAssociatedTokenAddress(
-    //       tokenMint.publicKey,
-    //       await zebecVault(sender.publicKey),
-    //       true,
-    //       spl.TOKEN_PROGRAM_ID,
-    //       spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-    //   )
-    //   const dest_token_account =await spl.getAssociatedTokenAddress(
-    //     tokenMint.publicKey,
-    //     receiver.publicKey,
-    //     true,
-    //     spl.TOKEN_PROGRAM_ID,
-    //     spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-    // )
-    // const fee_token_account =await spl.getAssociatedTokenAddress(
-    //   tokenMint.publicKey,
-    //   await feeVault(fee_receiver.publicKey),
-    //   true,
-    //   spl.TOKEN_PROGRAM_ID,
-    //   spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-    // )
-    // let now =new anchor.BN( Math.floor(new Date().getTime() / 1000))
-    //   const tx = await program.rpc.withdrawTokenStream({
-    //     accounts:{
-    //       destAccount:receiver.publicKey,
-    //       sourceAccount: sender.publicKey,
-    //       feeOwner:fee_receiver.publicKey,
-    //       vaultData:await create_fee_account(fee_receiver.publicKey),
-    //       feeVault:await feeVault(fee_receiver.publicKey),
-    //       zebecVault:await zebecVault(sender.publicKey),
-    //       dataAccount:dataAccount.publicKey,
-    //       withdrawData:await withdrawData(PREFIX_TOKEN,sender.publicKey,tokenMint.publicKey),     
-    //       systemProgram: anchor.web3.SystemProgram.programId,
-    //       tokenProgram:spl.TOKEN_PROGRAM_ID,
-    //       associatedTokenProgram:spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-    //       rent:anchor.web3.SYSVAR_RENT_PUBKEY,
-    //       mint:tokenMint.publicKey,
-    //       pdaAccountTokenAccount:pda_token_account,
-    //       destTokenAccount:dest_token_account,
-    //       feeRecieverTokenAccount:fee_token_account,
-    //     },
-    //     signers:[receiver,],
-    // });
-    // console.log("Your signature for withdraw token stream is ", tx);
-    // const data_account = await program.account.streamToken.fetch(
-    //   dataAccount.publicKey
-    // );
-    // let withdraw_amt = await getTokenBalance(provider.connection,fee_token_account)+await getTokenBalance(provider.connection,dest_token_account);
-    // if  (data_account.paused == 1 && now<endTime)
-    // {
-    // assert.equal(data_account.withdrawLimit.toString(),withdraw_amt.toString()); 
-    // }
-    // if  (data_account.paused != 1 && now>endTime)  
-    // {
-    // let  withdrawn_amount = data_account.amount
-    // assert.equal( withdrawn_amount.toString(),withdraw_amt.toString()); 
-    // }
-    // if  (data_account.paused != 1 && now<endTime)  
-    // {
-    // let withdrawn_amount = data_account.withdrawn
-    // assert.equal( withdrawn_amount.toString(),withdraw_amt.toString()); 
-    // } 
-    // })
+    it('Withdraw Token Stream',async()=>{
+      const pda_token_account =await spl.getAssociatedTokenAddress(
+          tokenMint.publicKey,
+          await zebecVault(sender.publicKey),
+          true,
+          spl.TOKEN_PROGRAM_ID,
+          spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+      )
+      const dest_token_account =await spl.getAssociatedTokenAddress(
+        tokenMint.publicKey,
+        receiver.publicKey,
+        true,
+        spl.TOKEN_PROGRAM_ID,
+        spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+    )
+    const fee_token_account =await spl.getAssociatedTokenAddress(
+      tokenMint.publicKey,
+      await feeVault(fee_receiver.publicKey),
+      true,
+      spl.TOKEN_PROGRAM_ID,
+      spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+    )
+    let now =new anchor.BN( Math.floor(new Date().getTime() / 1000))
+      const tx = await program.rpc.withdrawTokenStream({
+        accounts:{
+          destAccount:receiver.publicKey,
+          sourceAccount: sender.publicKey,
+          feeOwner:fee_receiver.publicKey,
+          vaultData:await create_fee_account(fee_receiver.publicKey),
+          feeVault:await feeVault(fee_receiver.publicKey),
+          zebecVault:await zebecVault(sender.publicKey),
+          dataAccount:dataAccount.publicKey,
+          withdrawData:await withdrawData(PREFIX_TOKEN,sender.publicKey,tokenMint.publicKey),     
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram:spl.TOKEN_PROGRAM_ID,
+          associatedTokenProgram:spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+          rent:anchor.web3.SYSVAR_RENT_PUBKEY,
+          mint:tokenMint.publicKey,
+          pdaAccountTokenAccount:pda_token_account,
+          destTokenAccount:dest_token_account,
+          feeRecieverTokenAccount:fee_token_account,
+        },
+        signers:[receiver,],
+    });
+    console.log("Your signature for withdraw token stream is ", tx);
+    const data_account = await program.account.streamToken.fetch(
+      dataAccount.publicKey
+    );
+    let withdraw_amt = await getTokenBalance(provider.connection,fee_token_account)+await getTokenBalance(provider.connection,dest_token_account);
+    if  (data_account.paused == 1 && now<endTime)
+    {
+    assert.equal(data_account.withdrawLimit.toString(),withdraw_amt.toString()); 
+    }
+    if  (data_account.paused != 1 && now>endTime)  
+    {
+    let  withdrawn_amount = data_account.amount
+    assert.equal( withdrawn_amount.toString(),withdraw_amt.toString()); 
+    }
+    if  (data_account.paused != 1 && now<endTime)  
+    {
+    let withdrawn_amount = data_account.withdrawn
+    assert.equal( withdrawn_amount.toString(),withdraw_amt.toString()); 
+    } 
+    })
     it('Resume Stream Token', async () => {
       const tx = await program.rpc.pauseResumeTokenStream({
         accounts:{
