@@ -543,7 +543,7 @@ pub struct TokenInstantTransfer<'info> {
     pda_account_token_account: Box<Account<'info, TokenAccount>>,
     #[account(
         init_if_needed,
-        payer = dest_account,
+        payer = source_account,
         associated_token::mint = mint,
         associated_token::authority = dest_account,
     )]
