@@ -190,7 +190,7 @@ import { PREFIX_TOKEN } from './src/Constants';
           mint:tokenMint.publicKey,
           pdaAccountTokenAccount:pda_token_account,
           destTokenAccount:dest_token_account,
-          feeRecieverTokenAccount:fee_token_account,
+          feeReceiverTokenAccount:fee_token_account,
         },
         signers:[receiver,],
     });
@@ -305,7 +305,7 @@ import { PREFIX_TOKEN } from './src/Constants';
             mint: tokenMint.publicKey,
             pdaAccountTokenAccount: pda_token_account,
             destTokenAccount: dest_token_account,
-            feeRecieverTokenAccount: fee_token_account,
+            feeReceiverTokenAccount: fee_token_account,
           },
           signers: [sender],
         });
@@ -374,7 +374,7 @@ import { PREFIX_TOKEN } from './src/Constants';
           associatedTokenProgram:spl.ASSOCIATED_TOKEN_PROGRAM_ID,
           rent:anchor.web3.SYSVAR_RENT_PUBKEY,
           mint:tokenMint.publicKey,
-          feeRecieverVaultTokenAccount:fee_vault_token_account,
+          feeReceiverVaultTokenAccount:fee_vault_token_account,
           feeOwnerTokenAccount:fee_owner_token_account,
         },
         signers:[fee_receiver],

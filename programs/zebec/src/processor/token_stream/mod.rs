@@ -86,7 +86,7 @@ pub fn process_withdraw_token_stream(
      //transfering comission amount
      create_transfer_token_signed(  ctx.accounts.token_program.to_account_info(), 
                                     ctx.accounts.pda_account_token_account.to_account_info(),
-                                    ctx.accounts.fee_reciever_token_account.to_account_info(),
+                                    ctx.accounts.fee_receiver_token_account.to_account_info(),
                                     ctx.accounts.zebec_vault.to_account_info(),
                                     outer,
                                     comission)?;  
@@ -175,7 +175,7 @@ pub fn process_cancel_token_stream(
      //transfering comission amount
      create_transfer_token_signed(  ctx.accounts.token_program.to_account_info(), 
                                     ctx.accounts.pda_account_token_account.to_account_info(),
-                                    ctx.accounts.fee_reciever_token_account.to_account_info(),
+                                    ctx.accounts.fee_receiver_token_account.to_account_info(),
                                     ctx.accounts.zebec_vault.to_account_info(),
                                     outer,
                                     comission)?;  
@@ -498,7 +498,7 @@ pub struct TokenWithdrawStream<'info> {
         associated_token::mint = mint,
         associated_token::authority = fee_vault,
     )]
-    fee_reciever_token_account: Box<Account<'info, TokenAccount>>,
+    fee_receiver_token_account: Box<Account<'info, TokenAccount>>,
 }
 #[derive(Accounts)]
 pub struct TokenInstantTransfer<'info> {
@@ -642,7 +642,7 @@ pub struct CancelTokenStream<'info> {
        associated_token::mint = mint,
        associated_token::authority = fee_vault,
    )]
-   fee_reciever_token_account: Box<Account<'info, TokenAccount>>,
+   fee_receiver_token_account: Box<Account<'info, TokenAccount>>,
 }
 #[account]
 pub struct StreamToken {

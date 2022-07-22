@@ -25,11 +25,11 @@ pub fn process_withdraw_fees_token(
     let outer = vec![inner.as_slice()];
     create_transfer_token_signed(
         ctx.accounts.token_program.to_account_info(), 
-        ctx.accounts.fee_reciever_vault_token_account.to_account_info(),
+        ctx.accounts.fee_receiver_vault_token_account.to_account_info(),
         ctx.accounts.fee_owner_token_account.to_account_info(), 
         ctx.accounts.fee_vault.to_account_info(), 
         outer, 
-        ctx.accounts.fee_reciever_vault_token_account.amount)?;
+        ctx.accounts.fee_receiver_vault_token_account.amount)?;
     Ok(())
 }
 pub fn process_withdraw_fees_sol(
@@ -131,7 +131,7 @@ pub struct WithdrawFeesToken<'info> {
         associated_token::mint = mint,
         associated_token::authority = fee_vault,
     )]
-    fee_reciever_vault_token_account: Box<Account<'info, TokenAccount>>,
+    fee_receiver_vault_token_account: Box<Account<'info, TokenAccount>>,
     #[account(
         init_if_needed,
         payer = fee_owner,
