@@ -211,7 +211,7 @@ pub struct InitializeMasterPda<'info> {
         ],bump,
         space = 0,
     )]
-    /// CHECK: test
+    /// CHECK: seeds has been checked
     pub zebec_vault: AccountInfo<'info>,
     #[account(mut)]
     pub sender: Signer<'info>,
@@ -231,7 +231,7 @@ pub struct Initialize<'info> {
         space=8+8,
     )]
     pub withdraw_data: Box<Account<'info, StreamedAmt>>,
-     /// CHECK:
+    /// CHECK: validated in fee_vault constraint
     pub fee_owner:AccountInfo<'info>,
     #[account(
          seeds = [
@@ -241,7 +241,6 @@ pub struct Initialize<'info> {
          ],bump
      )]
     pub vault_data: Box<Account<'info,Vault>>,
- 
     #[account(
          constraint = vault_data.owner == fee_owner.key(),
          constraint = vault_data.vault_address == fee_vault.key(),
@@ -250,11 +249,11 @@ pub struct Initialize<'info> {
              OPERATE.as_bytes(),           
          ],bump,        
      )]
-    /// CHECK:
+    /// CHECK: seeds has been checked
     pub fee_vault:AccountInfo<'info>,
     #[account(mut)]
     pub sender: Signer<'info>,
-    /// CHECK: test
+    /// CHECK: new stream receiver, do not need to be checked
     pub receiver: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -265,10 +264,10 @@ pub struct Withdraw<'info> {
             sender.key().as_ref(),
         ],bump,
     )]
-    /// CHECK: test
+    /// CHECK: seeds has been checked
     pub zebec_vault: AccountInfo<'info>,
     #[account(mut)]
-    /// CHECK: test
+    /// CHECK: validated in data_account constraint
     pub sender: AccountInfo<'info>,
     #[account(mut)]
     pub receiver: Signer<'info>,
@@ -286,9 +285,8 @@ pub struct Withdraw<'info> {
         ],bump,
     )]
     pub withdraw_data: Box<Account<'info, StreamedAmt>>,    
-    /// CHECK:
+    /// CHECK: validated in fee_vault constraint
     pub fee_owner:AccountInfo<'info>,
-
     #[account(
         seeds = [
             fee_owner.key().as_ref(),
@@ -307,9 +305,8 @@ pub struct Withdraw<'info> {
             OPERATE.as_bytes(),           
         ],bump,        
     )]
-    /// CHECK:
+    /// CHECK: seeds has been checked
     pub fee_vault:AccountInfo<'info>,
-   
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
@@ -319,7 +316,7 @@ pub struct InitializerWithdrawal<'info> {
             sender.key().as_ref(),
         ],bump,
     )]
-    /// CHECK: test
+    /// CHECK: seeds has been checked
     #[account(mut)]
     pub zebec_vault: AccountInfo<'info>,
     #[account(mut)]
@@ -339,7 +336,7 @@ pub struct InitializerWithdrawal<'info> {
 #[derive(Accounts)]
 pub struct Pause<'info> {
     pub sender: Signer<'info>,
-    /// CHECK: test
+    /// CHECK: validated in data_account constraint
     pub receiver: AccountInfo<'info>,
     #[account(mut,
         constraint = data_account.receiver == receiver.key(),
@@ -354,11 +351,11 @@ pub struct Cancel<'info> {
            sender.key().as_ref(),
        ],bump,
    )]
-   /// CHECK: test
+    /// CHECK: seeds has been checked
    pub zebec_vault: AccountInfo<'info>,
    #[account(mut)]
    pub sender: Signer<'info>,
-    /// CHECK: test
+    /// CHECK: validated in data_account constraint
    #[account(mut)]
    pub receiver: AccountInfo<'info>,
    #[account(mut,
@@ -374,19 +371,17 @@ pub struct Cancel<'info> {
         sender.key().as_ref(),
     ],bump,
     )]
-    pub withdraw_data: Box<Account<'info, StreamedAmt>>,   
-   /// CHECK:
+    pub withdraw_data: Box<Account<'info, StreamedAmt>>,
+    /// CHECK: validated in fee_vault constraint
     pub fee_owner:AccountInfo<'info>,
- 
-   #[account(
+    #[account(
        seeds = [
            fee_owner.key().as_ref(),
            OPERATEDATA.as_bytes(),
            fee_vault.key().as_ref(),
        ],bump
-   )]
+    )]
    pub vault_data: Account<'info,Vault>,
- 
    #[account(mut,
        constraint = vault_data.owner == fee_owner.key(),
        constraint = vault_data.vault_address == fee_vault.key(),
@@ -395,7 +390,7 @@ pub struct Cancel<'info> {
            OPERATE.as_bytes(),          
        ],bump,       
    )]
-   /// CHECK:
+    /// CHECK: seeds has been checked
    pub fee_vault:AccountInfo<'info>, 
    pub system_program: Program<'info, System>,
 }
@@ -406,12 +401,12 @@ pub struct InstantTransfer<'info> {
             sender.key().as_ref(),
         ],bump,
     )]
-    /// CHECK: test
+    /// CHECK: seeds has been checked
     #[account(mut)]
     pub zebec_vault: AccountInfo<'info>,
     #[account(mut)]
     pub sender: Signer<'info>,
-    /// CHECK: test
+    /// CHECK: This is the receiver account, since the funds are transferred directly, we do not need to check it
     #[account(mut)]
     pub receiver: AccountInfo<'info>,
     #[account(
@@ -423,6 +418,7 @@ pub struct InstantTransfer<'info> {
         ],bump,
         space=8+8,
     )]
+    /// CHECK: seeds has been checked
     pub withdraw_data: Box<Account<'info, StreamedAmt>>, 
     pub system_program: Program<'info, System>,
 }

@@ -50,7 +50,7 @@ pub struct InitializeFeeVault<'info> {
         ],bump,
         space=0,
     )]
-    /// CHECK:
+    /// CHECK: seeds has been checked
     pub fee_vault:AccountInfo<'info>,
     #[account(
         init,
@@ -62,7 +62,7 @@ pub struct InitializeFeeVault<'info> {
         ],bump,
         space=8+32+32+8,
     )]
-    /// CHECK:
+    /// CHECK: new account initialize, do not need to be validated
     pub vault_data: Account<'info,Vault>,
     #[account(mut)]
     pub owner: Signer<'info>,
@@ -80,7 +80,6 @@ pub struct WithdrawFeesSol<'info> {
         ],bump
     )]
     pub vault_data: Account<'info,Vault>,
-
     #[account(mut,
         constraint = vault_data.owner == fee_owner.key(),
         constraint = vault_data.vault_address == fee_vault.key(),
@@ -89,9 +88,8 @@ pub struct WithdrawFeesSol<'info> {
             OPERATE.as_bytes(),           
         ],bump,        
     )]
-    /// CHECK:
+    /// CHECK: seeds has been checked
     pub fee_vault:AccountInfo<'info>,
-    //Program Accounts
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
 }
@@ -107,7 +105,6 @@ pub struct WithdrawFeesToken<'info> {
         ],bump
     )]
     pub vault_data: Account<'info,Vault>,
-
     #[account(mut,
         constraint = vault_data.owner == fee_owner.key(),
         constraint = vault_data.vault_address == fee_vault.key(),
@@ -116,15 +113,12 @@ pub struct WithdrawFeesToken<'info> {
             OPERATE.as_bytes(),           
         ],bump,        
     )]
-    /// CHECK:
+    /// CHECK: seeds has been checked
     pub fee_vault:AccountInfo<'info>,
-
-    //Program Accounts
     pub system_program: Program<'info, System>,
     pub token_program:Program<'info,Token>,
     pub associated_token_program:Program<'info,AssociatedToken>,
     pub rent: Sysvar<'info, Rent>,
-    //Mint and Token Accounts
     pub mint:Account<'info,Mint>,
     #[account(
         mut,

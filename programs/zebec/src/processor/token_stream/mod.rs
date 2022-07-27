@@ -296,7 +296,7 @@ pub struct TokenStream<'info> {
         space=8+8,
     )]
     pub withdraw_data: Box<Account<'info, TokenWithdraw>>,
-    /// CHECK:
+    /// CHECK: validated in fee_vault constraint
     pub fee_owner:AccountInfo<'info>,
     #[account(
         seeds = [
@@ -306,22 +306,19 @@ pub struct TokenStream<'info> {
         ],bump
     )]
     pub vault_data: Account<'info,Vault>,
-
     #[account(
-        constraint = vault_data
-.owner == fee_owner.key(),
-        constraint = vault_data
-.vault_address == fee_vault.key(),
+        constraint = vault_data.owner == fee_owner.key(),
+        constraint = vault_data.vault_address == fee_vault.key(),
         seeds = [
             fee_owner.key().as_ref(),
             OPERATE.as_bytes(),           
         ],bump,        
     )]
-    /// CHECK:
+    /// CHECK: seeds has been checked
     pub fee_vault:AccountInfo<'info>,
     #[account(mut)]
     pub source_account: Signer<'info>,
-    /// CHECK:
+    /// CHECK: new stream receiver, do not need to be checked
     pub dest_account: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
     pub token_program:Program<'info,Token>,
@@ -330,7 +327,6 @@ pub struct TokenStream<'info> {
 }
 #[derive(Accounts)]
 pub struct TokenDeposit<'info> {
-    //PDA
     #[account(
         init_if_needed,
         payer=source_account,
@@ -339,19 +335,14 @@ pub struct TokenDeposit<'info> {
         ],bump,
         space=0,
     )]
-    /// CHECK:
+     /// CHECK: seeds has been checked
     pub zebec_vault: AccountInfo<'info>,
-
     #[account(mut)]
     pub source_account: Signer<'info>,
-
-    //Program Accounts
     pub system_program: Program<'info, System>,
     pub token_program:Program<'info,Token>,
     pub associated_token_program:Program<'info,AssociatedToken>,
     pub rent: Sysvar<'info, Rent>,
-
-    //Mint and Token Account
     pub mint:Account<'info,Mint>,
     #[account(
         mut,
@@ -370,13 +361,12 @@ pub struct TokenDeposit<'info> {
 }
 #[derive(Accounts)]
 pub struct InitializerTokenWithdrawal<'info> {
-    //PDA
     #[account(
         seeds = [
             source_account.key().as_ref(),
         ],bump,
     )]
-    /// CHECK:
+    /// CHECK: seeds has been checked
     pub zebec_vault: AccountInfo<'info>,
     #[account(
         init_if_needed,
@@ -391,13 +381,10 @@ pub struct InitializerTokenWithdrawal<'info> {
     pub withdraw_data: Box<Account<'info, TokenWithdraw>>,
     #[account(mut)]
     pub source_account: Signer<'info>,
-    //Program Accounts
     pub system_program: Program<'info, System>,
     pub token_program:Program<'info,Token>,
     pub associated_token_program:Program<'info,AssociatedToken>,
     pub rent: Sysvar<'info, Rent>,
-
-    //Mint and Token Account
     pub mint:Account<'info,Mint>,
     #[account(
         mut,
@@ -405,7 +392,6 @@ pub struct InitializerTokenWithdrawal<'info> {
         constraint= source_account_token_account.mint == mint.key()
     )]
     source_account_token_account: Account<'info, TokenAccount>,
-
     #[account(
         mut,
         associated_token::mint = mint,
@@ -415,24 +401,20 @@ pub struct InitializerTokenWithdrawal<'info> {
 }
 #[derive(Accounts)]
 pub struct TokenWithdrawStream<'info> {
-
-     //masterPDA
     #[account(
         seeds = [
             source_account.key().as_ref(),
         ],bump,
     )]
-    /// CHECK:
+    /// CHECK: seeds has been checked
     pub zebec_vault: AccountInfo<'info>,
     #[account(mut)]
     pub dest_account: Signer<'info>,
-    //User Account
     #[account(mut)]
-    /// CHECK:
+    /// CHECK: validated in data_account constraint
     pub source_account: AccountInfo<'info>,
-    /// CHECK:
+    /// CHECK: validated in fee_vault constraint
     pub fee_owner:AccountInfo<'info>,
-
     #[account(
         seeds = [
             fee_owner.key().as_ref(),
@@ -441,28 +423,22 @@ pub struct TokenWithdrawStream<'info> {
         ],bump
     )]
     pub vault_data: Account<'info,Vault>,
-
     #[account(
-        constraint = vault_data
-.owner == fee_owner.key(),
-        constraint = vault_data
-.vault_address == fee_vault.key(),
+        constraint = vault_data.owner == fee_owner.key(),
+        constraint = vault_data.vault_address == fee_vault.key(),
         seeds = [
             fee_owner.key().as_ref(),
             OPERATE.as_bytes(),           
         ],bump,        
     )]
-    /// CHECK:
+    /// CHECK: seeds has been checked
     pub fee_vault:AccountInfo<'info>,
-   
-    //data account
-    #[account(mut,
+       #[account(mut,
             constraint= data_account.sender==source_account.key(),
             constraint= data_account.receiver==dest_account.key(),    
             constraint= data_account.fee_owner==fee_owner.key(),           
         )]
     pub data_account:  Account<'info, StreamToken>,
-    //withdraw data
     #[account(
         mut,
         seeds = [
@@ -472,12 +448,10 @@ pub struct TokenWithdrawStream<'info> {
         ],bump,
     )]
     pub withdraw_data: Box<Account<'info, TokenWithdraw>>,
-     //Program Accounts
     pub system_program: Program<'info, System>,
     pub token_program:Program<'info,Token>,
     pub associated_token_program:Program<'info,AssociatedToken>,
     pub rent: Sysvar<'info, Rent>,
-    //Mint and Token Accounts
     pub mint:Account<'info,Mint>,
     #[account(
         mut,
@@ -502,21 +476,18 @@ pub struct TokenWithdrawStream<'info> {
 }
 #[derive(Accounts)]
 pub struct TokenInstantTransfer<'info> {
-
     #[account(
         seeds = [
             source_account.key().as_ref(),
         ],bump,
     )]
-    /// CHECK:
+    /// CHECK: seeds has been checked
     pub zebec_vault: AccountInfo<'info>,
-    /// CHECK:
+    /// CHECK: This is the receiver account, since the funds are transferred directly, we do not need to check it
     #[account(mut)]
     pub dest_account: AccountInfo<'info>,
-    //User Account
     #[account(mut)]
     pub source_account: Signer<'info>,
-    //withdraw data
     #[account(
         init_if_needed,
         payer=source_account,
@@ -528,12 +499,10 @@ pub struct TokenInstantTransfer<'info> {
         space=8+8,
     )]
     pub withdraw_data: Box<Account<'info, TokenWithdraw>>,
-     //Program Accounts
     pub system_program: Program<'info, System>,
     pub token_program:Program<'info,Token>,
     pub associated_token_program:Program<'info,AssociatedToken>,
     pub rent: Sysvar<'info, Rent>,
-    //Mint and Token Accounts
     pub mint:Account<'info,Mint>,
     #[account(
         mut,
@@ -553,7 +522,7 @@ pub struct TokenInstantTransfer<'info> {
 pub struct PauseTokenStream<'info> {
     #[account(mut)]
     pub sender: Signer<'info>,
-    /// CHECK: test
+    /// CHECK: validated in data_account constraint
     pub receiver: AccountInfo<'info>,
     #[account(mut,
         constraint = data_account.receiver == receiver.key(),
@@ -563,21 +532,19 @@ pub struct PauseTokenStream<'info> {
 }
 #[derive(Accounts)]
 pub struct CancelTokenStream<'info> {
-    //masterPDA
    #[account(
        seeds = [
            source_account.key().as_ref(),
        ],bump,
    )]
-   /// CHECK:
+   /// CHECK: seeds has been checked
    pub zebec_vault: AccountInfo<'info>,
    #[account(mut)]
-    /// CHECK:
+   /// CHECK: validated in data_account constraint
    pub dest_account: AccountInfo<'info>,
-   //User Account
    #[account(mut)]
    pub source_account: Signer<'info>,
-   /// CHECK:
+   /// CHECK: validated in fee_vault constraint
    pub fee_owner:AccountInfo<'info>, 
    #[account(
        seeds = [
@@ -588,25 +555,21 @@ pub struct CancelTokenStream<'info> {
    )]
    pub vault_data: Account<'info,Vault>, 
    #[account(
-       constraint = vault_data
-.owner == fee_owner.key(),
-       constraint = vault_data
-.vault_address == fee_vault.key(),
+       constraint = vault_data.owner == fee_owner.key(),
+       constraint = vault_data.vault_address == fee_vault.key(),
        seeds = [
            fee_owner.key().as_ref(),
            OPERATE.as_bytes(),          
        ],bump,       
    )]
-   /// CHECK:
+   /// CHECK: seeds has been checked
    pub fee_vault:AccountInfo<'info>, 
-   //data account
    #[account(mut,
            constraint= data_account.sender==source_account.key(),
            constraint= data_account.receiver==dest_account.key(),   
            constraint= data_account.fee_owner==fee_owner.key(),          
        )]
    pub data_account:  Account<'info, StreamToken>,
-   //withdraw data
    #[account(
        mut,
        seeds = [
@@ -616,12 +579,10 @@ pub struct CancelTokenStream<'info> {
        ],bump,
    )]
    pub withdraw_data: Box<Account<'info, TokenWithdraw>>,
-    //Program Accounts
    pub system_program: Program<'info, System>,
    pub token_program:Program<'info,Token>,
    pub associated_token_program:Program<'info,AssociatedToken>,
    pub rent: Sysvar<'info, Rent>,
-   //Mint and Token Accounts
    pub mint:Account<'info,Mint>,
    #[account(
        mut,
