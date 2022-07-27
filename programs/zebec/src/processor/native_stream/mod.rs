@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::{utils::{create_transfer,create_transfer_signed,check_overflow},error::ErrorCode,constants::*,create_fee_account::Vault};
+use crate::{utils::{create_transfer,create_transfer_signed,check_overflow,},error::ErrorCode,constants::*,create_fee_account::Vault};
 
 pub fn process_deposit_sol(
     ctx: Context<InitializeMasterPda>,
@@ -28,6 +28,27 @@ pub fn process_native_stream(
     data_account.fee_owner=ctx.accounts.fee_owner.key();
     data_account.paused_amt=0;
     withdraw_state.amount+=amount;
+    Ok(())
+}
+pub fn  process_update_native_stream(
+    ctx: Context<StreamUpdate>,
+    start_time: u64,
+    end_time: u64,
+    amount: u64
+) -> Result<()> {
+    check_overflow(start_time, end_time)?;
+    let now = Clock::get()?.unix_timestamp as u64; 
+    let data_account =&mut ctx.accounts.data_account;
+    if now > data_account.start_time
+    {
+        return Err(ErrorCode::StreamAlreadyStarted.into());
+    }
+    let previous_amount = data_account.amount;
+    ctx.accounts.withdraw_data.amount-=previous_amount;
+    ctx.accounts.withdraw_data.amount+=amount;
+    data_account.start_time = start_time;
+    data_account.end_time = end_time;
+    data_account.amount = amount;
     Ok(())
 }
 pub fn process_withdraw_stream(
@@ -251,6 +272,26 @@ pub struct Initialize<'info> {
      )]
     /// CHECK: seeds has been checked
     pub fee_vault:AccountInfo<'info>,
+    #[account(mut)]
+    pub sender: Signer<'info>,
+    /// CHECK: new stream receiver, do not need to be checked
+    pub receiver: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+}
+#[derive(Accounts)]
+pub struct StreamUpdate<'info> {
+    #[account(mut,
+        constraint = data_account.receiver == receiver.key(),
+        constraint = data_account.sender == sender.key(),
+    )]
+    pub data_account:  Box<Account<'info, Stream>>,
+    #[account(
+        seeds = [
+            PREFIX.as_bytes(),
+            sender.key().as_ref(),
+        ],bump,
+    )]
+    pub withdraw_data: Box<Account<'info, StreamedAmt>>,
     #[account(mut)]
     pub sender: Signer<'info>,
     /// CHECK: new stream receiver, do not need to be checked

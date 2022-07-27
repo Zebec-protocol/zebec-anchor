@@ -44,4 +44,6 @@ pub enum ErrorCode {
     NumericalOverflow,
     #[msg("PausedAmountExceeds")]
     PausedAmountExceeds,
+    #[msg("StreamAlreadyStarted")]
+    StreamAlreadyStarted
 }

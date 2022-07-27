@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::{utils::{create_transfer_signed,create_transfer_token_signed,create_transfer_token,check_overflow},error::ErrorCode,constants::*,create_fee_account::Vault};
+use crate::{utils::{create_transfer_signed,create_transfer_token_signed,create_transfer_token,check_overflow,},error::ErrorCode,constants::*,create_fee_account::Vault};
 use anchor_spl::{associated_token::AssociatedToken, token::{Mint, Token, TokenAccount,}};
 
 pub fn process_deposit_token(
@@ -36,7 +36,28 @@ pub fn process_token_stream(
     data_account.paused_amt=0;
     data_account.fee_owner= ctx.accounts.fee_owner.key();
     Ok(())
+}
+pub fn process_update_token_stream(
+    ctx:Context<TokenStreamUpdate>,
+    start_time:u64,
+    end_time:u64,
+    amount:u64,
+) ->Result<()>{
+    check_overflow(start_time, end_time)?;
+    let now = Clock::get()?.unix_timestamp as u64; 
+    let data_account =&mut ctx.accounts.data_account;
+    if now > data_account.start_time
+    {
+        return Err(ErrorCode::StreamAlreadyStarted.into());
     }
+    let previous_amount = data_account.amount;
+    ctx.accounts.withdraw_data.amount-=previous_amount;
+    ctx.accounts.withdraw_data.amount+=amount;
+    data_account.start_time = start_time;
+    data_account.end_time = end_time;
+    data_account.amount = amount;
+    Ok(())
+}
 pub fn process_withdraw_token_stream(
     ctx: Context<TokenWithdrawStream>,
 )   ->Result<()>{
@@ -324,6 +345,27 @@ pub struct TokenStream<'info> {
     pub token_program:Program<'info,Token>,
     pub mint:Account<'info,Mint>,
     pub rent: Sysvar<'info, Rent>
+}
+#[derive(Accounts)]
+pub struct TokenStreamUpdate<'info> {
+    #[account(mut,
+        constraint= data_account.sender==source_account.key(),
+        constraint= data_account.receiver==dest_account.key(),            
+    )]
+    pub data_account:  Account<'info, StreamToken>,
+    #[account(
+        seeds = [
+            PREFIX_TOKEN.as_bytes(),
+            source_account.key().as_ref(),
+            mint.key().as_ref(),
+        ],bump
+    )]
+    pub withdraw_data: Box<Account<'info, TokenWithdraw>>,
+    #[account(mut)]
+    pub source_account: Signer<'info>,
+    /// CHECK: new stream receiver, do not need to be checked
+    pub dest_account: AccountInfo<'info>,
+    pub mint:Account<'info,Mint>,
 }
 #[derive(Accounts)]
 pub struct TokenDeposit<'info> {
