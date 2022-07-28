@@ -296,7 +296,7 @@ pub struct StreamUpdate<'info> {
         constraint = data_account.sender == sender.key(),
     )]
     pub data_account:  Box<Account<'info, Stream>>,
-    #[account(
+    #[account(mut,
         seeds = [
             PREFIX.as_bytes(),
             sender.key().as_ref(),

@@ -365,7 +365,7 @@ pub struct TokenStreamUpdate<'info> {
         constraint= data_account.receiver==dest_account.key(),            
     )]
     pub data_account:  Account<'info, StreamToken>,
-    #[account(
+    #[account(mut,
         seeds = [
             PREFIX_TOKEN.as_bytes(),
             source_account.key().as_ref(),
