@@ -45,5 +45,7 @@ pub enum ErrorCode {
     #[msg("PausedAmountExceeds")]
     PausedAmountExceeds,
     #[msg("StreamAlreadyStarted")]
-    StreamAlreadyStarted
+    StreamAlreadyStarted,
+    #[msg("UpdateNotAllowed")]
+    UpdateNotAllowed,
 }

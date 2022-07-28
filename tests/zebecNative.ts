@@ -3,6 +3,7 @@ import { assert } from "chai";
 import { feeVault,create_fee_account,zebecVault,withdrawData } from './src/Accounts';
 import { airdropSol,getClusterTime,solFromProvider } from './src/utils';
 import {PREFIX} from './src/Constants'
+import { bytes } from '@project-serum/anchor/dist/cjs/utils';
 // Configure the client to use the local cluster.
 const provider = anchor.Provider.env();
 anchor.setProvider(provider)
@@ -42,7 +43,7 @@ describe('zebec native', () => {
   });
   console.log("Your transaction signature is ", tx);
   }
-  )
+  );
   it('Deposit Sol', async () => {
     const amount=new anchor.BN(anchor.web3.LAMPORTS_PER_SOL)
     const tx = await program.rpc.depositSol(amount,{
@@ -62,8 +63,10 @@ describe('zebec native', () => {
     const startTime =new anchor.BN(now+40)
     const endTime=new anchor.BN(now+60)
     const amount=new anchor.BN(anchor.web3.LAMPORTS_PER_SOL)
+    const can_cancel= true;
+    const can_update = true;
     const dataSize = 8+8+8+8+8+32+32+8+8+32+200
-    const tx = await program.rpc.nativeStream(startTime,endTime,amount,{
+    const tx = await program.rpc.nativeStream(startTime,endTime,amount,can_cancel,can_update,{
       accounts:{
         dataAccount: dataAccount.publicKey,
         withdrawData: await withdrawData(PREFIX,sender.publicKey),

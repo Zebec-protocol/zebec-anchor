@@ -19,6 +19,8 @@ pub fn process_token_stream(
     start_time:u64,
     end_time:u64,
     amount:u64,
+    can_cancel:bool,
+    can_update:bool,
 ) ->Result<()>{
     check_overflow(start_time, end_time)?;
     ctx.accounts.withdraw_data.amount+=amount;
@@ -34,6 +36,8 @@ pub fn process_token_stream(
     data_account.withdrawn = 0;
     data_account.paused_at = 0;
     data_account.paused_amt=0;
+    data_account.can_cancel=can_cancel;
+    data_account.can_update=can_update;
     data_account.fee_owner= ctx.accounts.fee_owner.key();
     Ok(())
 }
@@ -46,6 +50,10 @@ pub fn process_update_token_stream(
     check_overflow(start_time, end_time)?;
     let now = Clock::get()?.unix_timestamp as u64; 
     let data_account =&mut ctx.accounts.data_account;
+    if !data_account.can_update
+    {
+        return Err(ErrorCode::UpdateNotAllowed.into());
+    }
     if now > data_account.start_time
     {
         return Err(ErrorCode::StreamAlreadyStarted.into());
@@ -153,6 +161,10 @@ pub fn process_cancel_token_stream(
     let withdraw_state = &mut ctx.accounts.withdraw_data;
     let vault_token_account=&mut ctx.accounts.pda_account_token_account;
     let now = Clock::get()?.unix_timestamp as u64;
+    if !data_account.can_cancel
+    {
+        return Err(ErrorCode::CancelNotAllowed.into());
+    }
     //Calculated Amount
     let mut allowed_amt = data_account.allowed_amt(now);
     if now >= data_account.end_time {
@@ -363,7 +375,7 @@ pub struct TokenStreamUpdate<'info> {
     pub withdraw_data: Box<Account<'info, TokenWithdraw>>,
     #[account(mut)]
     pub source_account: Signer<'info>,
-    /// CHECK: new stream receiver, do not need to be checked
+    /// CHECK: stream receiver checked in data account
     pub dest_account: AccountInfo<'info>,
     pub mint:Account<'info,Mint>,
 }
@@ -661,6 +673,8 @@ pub struct StreamToken {
     pub paused_at: u64,
     pub fee_owner:Pubkey,
     pub paused_amt:u64,
+    pub can_cancel:bool,
+    pub can_update:bool,
 }
 impl StreamToken {
     pub fn allowed_amt(&self, now: u64) -> u64 {
