@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::{utils::{create_transfer_signed,create_transfer_token_signed,create_transfer_token,check_overflow},error::ErrorCode,constants::*,create_fee_account::Vault};
+use crate::{utils::{create_transfer_signed,create_transfer_token_signed,create_transfer_token,check_overflow,},error::ErrorCode,constants::*,create_fee_account::Vault};
 use anchor_spl::{associated_token::AssociatedToken, token::{Mint, Token, TokenAccount,}};
 
 pub fn process_deposit_token(
@@ -19,6 +19,8 @@ pub fn process_token_stream(
     start_time:u64,
     end_time:u64,
     amount:u64,
+    can_cancel:bool,
+    can_update:bool,
 ) ->Result<()>{
     check_overflow(start_time, end_time)?;
     ctx.accounts.withdraw_data.amount+=amount;
@@ -34,9 +36,36 @@ pub fn process_token_stream(
     data_account.withdrawn = 0;
     data_account.paused_at = 0;
     data_account.paused_amt=0;
+    data_account.can_cancel=can_cancel;
+    data_account.can_update=can_update;
     data_account.fee_owner= ctx.accounts.fee_owner.key();
     Ok(())
+}
+pub fn process_update_token_stream(
+    ctx:Context<TokenStreamUpdate>,
+    start_time:u64,
+    end_time:u64,
+    amount:u64,
+) ->Result<()>{
+    check_overflow(start_time, end_time)?;
+    let now = Clock::get()?.unix_timestamp as u64; 
+    let data_account =&mut ctx.accounts.data_account;
+    if !data_account.can_update
+    {
+        return Err(ErrorCode::UpdateNotAllowed.into());
     }
+    if now > data_account.start_time
+    {
+        return Err(ErrorCode::StreamAlreadyStarted.into());
+    }
+    let previous_amount = data_account.amount;
+    ctx.accounts.withdraw_data.amount-=previous_amount;
+    ctx.accounts.withdraw_data.amount+=amount;
+    data_account.start_time = start_time;
+    data_account.end_time = end_time;
+    data_account.amount = amount;
+    Ok(())
+}
 pub fn process_withdraw_token_stream(
     ctx: Context<TokenWithdrawStream>,
 )   ->Result<()>{
@@ -132,6 +161,10 @@ pub fn process_cancel_token_stream(
     let withdraw_state = &mut ctx.accounts.withdraw_data;
     let vault_token_account=&mut ctx.accounts.pda_account_token_account;
     let now = Clock::get()?.unix_timestamp as u64;
+    if !data_account.can_cancel
+    {
+        return Err(ErrorCode::CancelNotAllowed.into());
+    }
     //Calculated Amount
     let mut allowed_amt = data_account.allowed_amt(now);
     if now >= data_account.end_time {
@@ -324,6 +357,27 @@ pub struct TokenStream<'info> {
     pub token_program:Program<'info,Token>,
     pub mint:Account<'info,Mint>,
     pub rent: Sysvar<'info, Rent>
+}
+#[derive(Accounts)]
+pub struct TokenStreamUpdate<'info> {
+    #[account(mut,
+        constraint= data_account.sender==source_account.key(),
+        constraint= data_account.receiver==dest_account.key(),            
+    )]
+    pub data_account:  Account<'info, StreamToken>,
+    #[account(mut,
+        seeds = [
+            PREFIX_TOKEN.as_bytes(),
+            source_account.key().as_ref(),
+            mint.key().as_ref(),
+        ],bump
+    )]
+    pub withdraw_data: Box<Account<'info, TokenWithdraw>>,
+    #[account(mut)]
+    pub source_account: Signer<'info>,
+    /// CHECK: stream receiver checked in data account
+    pub dest_account: AccountInfo<'info>,
+    pub mint:Account<'info,Mint>,
 }
 #[derive(Accounts)]
 pub struct TokenDeposit<'info> {
@@ -619,6 +673,8 @@ pub struct StreamToken {
     pub paused_at: u64,
     pub fee_owner:Pubkey,
     pub paused_amt:u64,
+    pub can_cancel:bool,
+    pub can_update:bool,
 }
 impl StreamToken {
     pub fn allowed_amt(&self, now: u64) -> u64 {

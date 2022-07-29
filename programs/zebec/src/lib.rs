@@ -38,9 +38,19 @@ mod zebec {
         ctx: Context<Initialize>,
         start_time: u64,
         end_time: u64,
+        amount: u64,
+        can_cancel:bool,
+        can_update:bool,
+    )-> Result<()> {
+        process_native_stream(ctx,start_time,end_time,amount,can_cancel,can_update)
+    }
+    pub fn native_stream_update(
+        ctx: Context<StreamUpdate>,
+        start_time: u64,
+        end_time: u64,
         amount: u64
     )-> Result<()> {
-        process_native_stream(ctx,start_time,end_time,amount)
+        process_update_native_stream(ctx,start_time,end_time,amount)
     }
     pub fn withdraw_stream(
         ctx: Context<Withdraw>,
@@ -80,8 +90,18 @@ mod zebec {
         start_time:u64,
         end_time:u64,
         amount:u64,
+        can_cancel:bool,
+        can_update:bool,
     ) ->Result<()>{
-        process_token_stream(ctx,start_time,end_time,amount)
+        process_token_stream(ctx,start_time,end_time,amount,can_cancel,can_update)
+    }
+    pub fn token_stream_update(
+        ctx:Context<TokenStreamUpdate>,
+        start_time:u64,
+        end_time:u64,
+        amount:u64,
+    )->Result<()>{
+        process_update_token_stream(ctx,start_time,end_time,amount)
     }
     pub fn withdraw_token_stream(
         ctx: Context<TokenWithdrawStream>,

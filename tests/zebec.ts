@@ -2,7 +2,7 @@ import * as anchor from '@project-serum/anchor';
 import { assert } from "chai";
 import * as spl from '@solana/spl-token'
 import { PublicKey} from "@solana/web3.js";
-import { airdropSol,solFromProvider } from './src/utils';
+import { airdropSol,solFromProvider,getClusterTime } from './src/utils';
 import { getTokenBalance,createMint,createUserAndAssociatedWallet,feeVault,create_fee_account,zebecVault,withdrawData } from './src/Accounts';
 import { PREFIX_TOKEN } from './src/Constants';
   // Configure the client to use the local cluster.
@@ -88,12 +88,14 @@ import { PREFIX_TOKEN } from './src/Constants';
     assert.equal(tokenbalance.toString(),amount.toString());
     })
     it('Token Stream',async()=>{  
-      let now = Math.floor(new Date().getTime() / 1000)
-      startTime = new anchor.BN(now-1000) 
-      endTime=new anchor.BN(now+2000)
+      let now = await getClusterTime(provider.connection)
+      startTime = new anchor.BN(now+100) 
+      endTime=new anchor.BN(now+200)
       const amount=new anchor.BN(4000000)
+      const can_cancel= true;
+      const can_update = true;
       const dataSize = 8+8+8+8+8+32+32+8+8+32+200
-      const tx = await program.rpc.tokenStream(startTime,endTime,amount,{
+      const tx = await program.rpc.tokenStream(startTime,endTime,amount,can_cancel,can_update,{
         accounts:{
           dataAccount: dataAccount.publicKey,
           withdrawData: await withdrawData(PREFIX_TOKEN,sender.publicKey,tokenMint.publicKey),
@@ -116,6 +118,39 @@ import { PREFIX_TOKEN } from './src/Constants';
         signers:[sender,dataAccount],
     });
     console.log("Your transaction for token stream signature", tx);
+    const data_account = await program.account.streamToken.fetch(
+      dataAccount.publicKey
+    );
+    
+    assert.equal(data_account.startTime.toString(),startTime.toString());
+    assert.equal(data_account.endTime.toString(),endTime.toString());
+    assert.equal(data_account.amount.toString(),amount.toString());
+    assert.equal(data_account.sender.toString(),sender.publicKey.toString());
+    assert.equal(data_account.receiver.toString(),receiver.publicKey.toString());
+    assert.equal(data_account.paused.toString(),"0");   
+
+    const withdraw_info = await program.account.tokenWithdraw.fetch(
+      await withdrawData(PREFIX_TOKEN,sender.publicKey,tokenMint.publicKey)
+    );
+    assert.equal(withdraw_info.amount.toString(),amount.toString());
+    })
+    it('Token Stream Update',async()=>{  
+      let now = await getClusterTime(provider.connection)
+      startTime = new anchor.BN(now-20) 
+      endTime=new anchor.BN(now+10)
+      const amount=new anchor.BN(4000000)
+      const tx = await program.rpc.tokenStreamUpdate(startTime,endTime,amount,{
+        accounts:{
+          dataAccount: dataAccount.publicKey,
+          withdrawData: await withdrawData(PREFIX_TOKEN,sender.publicKey,tokenMint.publicKey),
+          sourceAccount: sender.publicKey,
+          destAccount:receiver.publicKey,
+          mint:tokenMint.publicKey,
+        },
+
+        signers:[sender,],
+    });
+    console.log("Your transaction for token stream update signature", tx);
     const data_account = await program.account.streamToken.fetch(
       dataAccount.publicKey
     );
