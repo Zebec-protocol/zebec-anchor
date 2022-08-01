@@ -39,8 +39,8 @@ mod zebec {
         start_time: u64,
         end_time: u64,
         amount: u64,
-        can_cancel:bool,
-        can_update:bool,
+        can_cancel:u64,
+        can_update:u64,
     )-> Result<()> {
         process_native_stream(ctx,start_time,end_time,amount,can_cancel,can_update)
     }
@@ -90,8 +90,8 @@ mod zebec {
         start_time:u64,
         end_time:u64,
         amount:u64,
-        can_cancel:bool,
-        can_update:bool,
+        can_cancel:u64,
+        can_update:u64,
     ) ->Result<()>{
         process_token_stream(ctx,start_time,end_time,amount,can_cancel,can_update)
     }
