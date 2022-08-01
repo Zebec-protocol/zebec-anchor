@@ -1,12 +1,14 @@
+[programs.devnet]
+zebec = "Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia"
 [programs.localnet]
-zebec = "14NJEfpvoq6PywHdwFhXcfnHTsPUK3cScCaezKBSDWLd"
+zebec = "Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia"
 
 [registry]
 url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/zebec.ts"
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/zebecNative.ts"

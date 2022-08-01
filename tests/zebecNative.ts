@@ -7,7 +7,7 @@ import { bytes } from '@project-serum/anchor/dist/cjs/utils';
 // Configure the client to use the local cluster.
 const provider = anchor.Provider.env();
 anchor.setProvider(provider)
-const programId = new anchor.web3.PublicKey("14NJEfpvoq6PywHdwFhXcfnHTsPUK3cScCaezKBSDWLd");
+const programId = new anchor.web3.PublicKey("Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia");
 const idl = JSON.parse(
   require("fs").readFileSync("./target/idl/zebec.json", "utf8")
 );
@@ -63,8 +63,8 @@ describe('zebec native', () => {
     const startTime =new anchor.BN(now+40)
     const endTime=new anchor.BN(now+60)
     const amount=new anchor.BN(anchor.web3.LAMPORTS_PER_SOL)
-    const can_cancel= new anchor.BN(1);
-    const can_update =new anchor.BN(1);
+    const can_cancel= true
+    const can_update =true;
     const dataSize = 8+8+8+8+8+32+32+8+8+32+200
     const tx = await program.rpc.nativeStream(startTime,endTime,amount,can_cancel,can_update,{
       accounts:{

@@ -19,8 +19,8 @@ pub fn process_token_stream(
     start_time:u64,
     end_time:u64,
     amount:u64,
-    can_cancel:u64,
-    can_update:u64,
+    can_cancel:bool,
+    can_update:bool,
 ) ->Result<()>{
     check_overflow(start_time, end_time)?;
     ctx.accounts.withdraw_data.amount+=amount;
@@ -50,7 +50,7 @@ pub fn process_update_token_stream(
     check_overflow(start_time, end_time)?;
     let now = Clock::get()?.unix_timestamp as u64; 
     let data_account =&mut ctx.accounts.data_account;
-    if data_account.can_update == 0
+    if !data_account.can_update
     {
         return Err(ErrorCode::UpdateNotAllowed.into());
     }
@@ -161,7 +161,7 @@ pub fn process_cancel_token_stream(
     let withdraw_state = &mut ctx.accounts.withdraw_data;
     let vault_token_account=&mut ctx.accounts.pda_account_token_account;
     let now = Clock::get()?.unix_timestamp as u64;
-    if data_account.can_cancel==0
+    if !data_account.can_cancel
     {
         return Err(ErrorCode::CancelNotAllowed.into());
     }
@@ -673,8 +673,8 @@ pub struct StreamToken {
     pub paused_at: u64,
     pub fee_owner:Pubkey,
     pub paused_amt:u64,
-    pub can_cancel:u64,
-    pub can_update:u64,
+    pub can_cancel:bool,
+    pub can_update:bool,
 }
 impl StreamToken {
     pub fn allowed_amt(&self, now: u64) -> u64 {
