@@ -92,8 +92,8 @@ import { PREFIX_TOKEN } from './src/Constants';
       startTime = new anchor.BN(now+100) 
       endTime=new anchor.BN(now+200)
       const amount=new anchor.BN(4000000)
-      const can_cancel= true;
-      const can_update = true;
+      const can_cancel= new anchor.BN(1);
+      const can_update =new anchor.BN(1);
       const dataSize = 8+8+8+8+8+32+32+8+8+32+200
       const tx = await program.rpc.tokenStream(startTime,endTime,amount,can_cancel,can_update,{
         accounts:{
