@@ -4,7 +4,7 @@ import * as spl from '@solana/spl-token'
 import { PublicKey} from "@solana/web3.js";
 import { airdropSol,solFromProvider,getClusterTime } from './src/utils';
 import { getTokenBalance,createMint,createUserAndAssociatedWallet,feeVault,create_fee_account,zebecVault,withdrawData } from './src/Accounts';
-import { PREFIX_TOKEN } from './src/Constants';
+import { PREFIX_TOKEN,STREAM_TOKEN_SIZE } from './src/Constants';
   // Configure the client to use the local cluster.
   const provider = anchor.Provider.env();
   anchor.setProvider(provider)
@@ -94,7 +94,7 @@ import { PREFIX_TOKEN } from './src/Constants';
       const amount=new anchor.BN(4000000)
       const can_cancel= true
       const can_update =true;
-      const dataSize = 8+8+8+8+8+32+32+8+8+32+200
+      const dataSize = STREAM_TOKEN_SIZE
       const tx = await program.rpc.tokenStream(startTime,endTime,amount,can_cancel,can_update,{
         accounts:{
           dataAccount: dataAccount.publicKey,

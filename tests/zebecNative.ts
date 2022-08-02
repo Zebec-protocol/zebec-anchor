@@ -2,7 +2,7 @@ import * as anchor from '@project-serum/anchor';
 import { assert } from "chai";
 import { feeVault,create_fee_account,zebecVault,withdrawData } from './src/Accounts';
 import { airdropSol,getClusterTime,solFromProvider } from './src/utils';
-import {PREFIX} from './src/Constants'
+import {PREFIX,STREAM_SIZE} from './src/Constants'
 import { bytes } from '@project-serum/anchor/dist/cjs/utils';
 // Configure the client to use the local cluster.
 const provider = anchor.Provider.env();
@@ -65,7 +65,7 @@ describe('zebec native', () => {
     const amount=new anchor.BN(anchor.web3.LAMPORTS_PER_SOL)
     const can_cancel= true
     const can_update =true;
-    const dataSize = 8+8+8+8+8+32+32+8+8+32+200
+    const dataSize = STREAM_SIZE
     const tx = await program.rpc.nativeStream(startTime,endTime,amount,can_cancel,can_update,{
       accounts:{
         dataAccount: dataAccount.publicKey,

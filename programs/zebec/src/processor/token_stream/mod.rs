@@ -313,7 +313,6 @@ pub fn process_instant_token_transfer(
     }
     Ok(())
 }
-
 #[derive(Accounts)]
 pub struct TokenStream<'info> {
     #[account(zero)]
