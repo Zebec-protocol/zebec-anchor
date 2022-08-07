@@ -1,6 +1,6 @@
 // Zebec Anchor Program - https://docs.zebec.io/
 use anchor_lang::prelude::*;
-declare_id!("Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia");
+declare_id!("FfEvEBBnUFSLtetZmU7yA9wDECvTy1MryMy2QkVH3fQa");
 
 pub mod utils;
 pub mod error;
