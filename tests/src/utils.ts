@@ -46,17 +46,18 @@ export const solFromProvider = async (
 export const getTxSize = (
   accounts: Array<Accounts>,
   owners: Array<PublicKey>,
-  isDataVector: boolean
+  isDataVector: boolean,
+  data_size:number,
 ) => {
   const vec_discriminator = 8;
   const discriminator = 8;
   const pubkey_size = 32;
   const account_size = vec_discriminator + accounts.length * (32 + 1 + 1);
-  let data_size = discriminator + 32 * owners.length;
+  let datasize = discriminator + data_size;
   if (isDataVector) {
-    data_size = data_size + vec_discriminator;
+    datasize = data_size + vec_discriminator;
   }
-  const num_owner = owners.length + 1;
+  const num_owner = owners.length ;
   const sig_vec_size = vec_discriminator + num_owner * 1;
   const txSize =
     discriminator +

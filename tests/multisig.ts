@@ -115,10 +115,10 @@ describe("multisig", () => {
       },
     ];
     const transaction = anchor.web3.Keypair.generate();
-    const txSize = getTxSize(accounts, owners, false);
     const data = zebecProgram.coder.instruction.encode("depositSol", {
       amount: new anchor.BN(1000000),
     });
+    const txSize = getTxSize(accounts, owners, false,8);
     const tx = await multisigProgram.rpc.createTransaction(
       pid,
       accounts,
@@ -230,7 +230,7 @@ describe("multisig", () => {
       endTime: endTime,
       amount: amount,
     });
-    const txSize = getTxSize(accounts, owners, false);
+    const txSize = getTxSize(accounts, owners, false,8*3);
     const dataSize = STREAM_SIZE;
 
     const transaction = anchor.web3.Keypair.generate();
@@ -315,8 +315,8 @@ describe("multisig", () => {
       },
     ];
     const transaction = anchor.web3.Keypair.generate();
-    const txSize = getTxSize(accounts, owners, false);
     const data = zebecProgram.coder.instruction.encode("pauseStream", {});
+    const txSize = getTxSize(accounts, owners, false,0);
     const tx = await multisigProgram.rpc.createTransaction(
       pid,
       accounts,
@@ -395,8 +395,8 @@ describe("multisig", () => {
       },
     ];
     const transaction = anchor.web3.Keypair.generate();
-    const txSize = getTxSize(accounts, owners, false);
     const data = zebecProgram.coder.instruction.encode("pauseStream", {});
+    const txSize = getTxSize(accounts, owners, false,0);
     const tx = await multisigProgram.rpc.createTransaction(
       pid,
       accounts,

@@ -1,6 +1,8 @@
+[programs.devnet]
+zebec = "Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia"
 [programs.localnet]
 serum_multisig = "7yAc31uU6YzsLVzeKMkFpQTTjiMwcCEZg2ojh14Rq6be"
-zebec = "FfEvEBBnUFSLtetZmU7yA9wDECvTy1MryMy2QkVH3fQa"
+zebec = "Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia"
 
 [registry]
 url = "https://anchor.projectserum.com"
