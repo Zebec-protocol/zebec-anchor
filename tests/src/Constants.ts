@@ -7,7 +7,7 @@ const programId = new anchor.web3.PublicKey(
   "Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia"
 );
 const multisigProgramId = new anchor.web3.PublicKey(
-  "7yAc31uU6YzsLVzeKMkFpQTTjiMwcCEZg2ojh14Rq6be"
+  "6tbPiQLgTU4ySYWyZGXbnVSAEzLc1uF8t5kJPXXgBmRP"
 );
 const idl = JSON.parse(
   require("fs").readFileSync("./target/idl/zebec.json", "utf8")

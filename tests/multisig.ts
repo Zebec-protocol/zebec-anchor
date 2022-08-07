@@ -41,7 +41,7 @@ console.log("Pda key: " + dataAccount.publicKey.toBase58());
 describe("multisig", () => {
   it("Tests the multisig program", async () => {
     const num_owner = owners.length + 1;
-    const multisigSize = 8 + 4 + 32 * num_owner + 8 + 1 + 4;
+    const multisigSize = 8 + 8 + 32 * num_owner + 8 + 1 + 4;
     const threshold = new anchor.BN(2);
     const [multisigSigner, nonce] =
       await anchor.web3.PublicKey.findProgramAddress(

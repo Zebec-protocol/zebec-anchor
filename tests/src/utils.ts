@@ -61,12 +61,12 @@ export const getTxSize = (
   const sig_vec_size = vec_discriminator + num_owner * 1;
   const txSize =
     discriminator +
-    pubkey_size +
-    pubkey_size +
-    account_size +
-    data_size +
-    sig_vec_size +
-    1 +
-    4;
+    pubkey_size + //multisig program id
+    pubkey_size + // program id
+    account_size + //account vector
+    datasize + //size of data
+    sig_vec_size + //signed vector
+    1 + //did execute bool
+    4; //Owner set sequence number.
   return txSize;
 };
