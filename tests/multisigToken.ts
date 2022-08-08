@@ -219,7 +219,7 @@ describe("multisig", () => {
     const data = zebecProgram.coder.instruction.encode("depositToken", {
       amount: new anchor.BN(1000000),
     });
-    const txSize = getTxSize(accounts, owners, false,8); 
+    const txSize = getTxSize(accounts, owners, false, 8);
     const tx = await multisigProgram.rpc.createTransaction(
       pid,
       accounts,
@@ -342,16 +342,20 @@ describe("multisig", () => {
       },
     ];
     let now = Math.floor(new Date().getTime() / 1000);
-    const startTime = new anchor.BN(now - 1000);
+    const startTime = new anchor.BN(now + 60);
     const endTime = new anchor.BN(now + 2000);
     const dataSize = STREAM_TOKEN_SIZE;
     const amount = new anchor.BN(1000000);
+    const canCancel = true;
+    const canUpdate = true;
     const data = zebecProgram.coder.instruction.encode("tokenStream", {
       startTime: startTime,
       endTime: endTime,
       amount: amount,
+      canCancel,
+      canUpdate,
     });
-    const txSize = getTxSize(accounts, owners, false,8*3);
+    const txSize = getTxSize(accounts, owners, false, 8 * 3 + 1 * 2);
     const transaction = anchor.web3.Keypair.generate();
     const tx = await multisigProgram.rpc.createTransaction(
       pid,
@@ -413,6 +417,109 @@ describe("multisig", () => {
       exeTxn
     );
   });
+  it("Updating token stream from multisig", async () => {
+    const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
+      [multisig.publicKey.toBuffer()],
+      multisigProgram.programId
+    );
+    const accounts = [
+      {
+        pubkey: dataAccount.publicKey,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: await withdrawData(
+          PREFIX_TOKEN,
+          multisigSigner,
+          tokenMint.publicKey
+        ),
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: multisigSigner,
+        isWritable: true,
+        isSigner: true,
+      },
+      {
+        pubkey: receiver.publicKey,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: tokenMint.publicKey,
+        isWritable: false,
+        isSigner: false,
+      },
+    ];
+    let now = Math.floor(new Date().getTime() / 1000);
+    const startTime = new anchor.BN(now - 1000);
+    const endTime = new anchor.BN(now + 2000);
+    const amount = new anchor.BN(1000000);
+    const data = zebecProgram.coder.instruction.encode("tokenStreamUpdate", {
+      startTime: startTime,
+      endTime: endTime,
+      amount: amount,
+    });
+    const txSize = getTxSize(accounts, owners, false, 8 * 3);
+    const transaction = anchor.web3.Keypair.generate();
+    const tx = await multisigProgram.rpc.createTransaction(
+      pid,
+      accounts,
+      data,
+      {
+        accounts: {
+          multisig: multisig.publicKey,
+          transaction: transaction.publicKey,
+          proposer: ownerA.publicKey,
+        },
+        instructions: [
+          await multisigProgram.account.transaction.createInstruction(
+            transaction,
+            txSize
+          ),
+        ],
+        signers: [transaction, ownerA],
+      }
+    );
+    console.log("Multisig Update Stream Token Transaction created ", tx);
+    const approveTx = await multisigProgram.rpc.approve({
+      accounts: {
+        multisig: multisig.publicKey,
+        transaction: transaction.publicKey,
+        owner: ownerB.publicKey,
+      },
+      signers: [ownerB],
+    });
+    console.log(
+      "Multisig Update Stream Token TransactionTransaction Approved by ownerD",
+      approveTx
+    );
+    const exeTxn = await multisigProgram.rpc.executeTransaction({
+      accounts: {
+        multisig: multisig.publicKey,
+        multisigSigner,
+        transaction: transaction.publicKey,
+      },
+      remainingAccounts: accounts
+        .map((t: any) => {
+          if (t.pubkey.equals(multisigSigner)) {
+            return { ...t, isSigner: false };
+          }
+          return t;
+        })
+        .concat({
+          pubkey: zebecProgram.programId,
+          isWritable: false,
+          isSigner: false,
+        }),
+    });
+    console.log(
+      "Multisig Update Stream Token TransactionTransaction  executed",
+      exeTxn
+    );
+  });
   it("Pause token stream from multisig", async () => {
     const [multisigSigner, nonce] =
       await anchor.web3.PublicKey.findProgramAddress(
@@ -441,7 +548,7 @@ describe("multisig", () => {
       "pauseResumeTokenStream",
       {}
     );
-    const txSize = getTxSize(accounts, owners, false,0);
+    const txSize = getTxSize(accounts, owners, false, 0);
     const tx = await multisigProgram.rpc.createTransaction(
       pid,
       accounts,
@@ -524,7 +631,7 @@ describe("multisig", () => {
       "pauseResumeTokenStream",
       {}
     );
-    const txSize = getTxSize(accounts, owners, false,0);
+    const txSize = getTxSize(accounts, owners, false, 0);
     const tx = await multisigProgram.rpc.createTransaction(
       pid,
       accounts,
@@ -578,5 +685,451 @@ describe("multisig", () => {
         }),
     });
     console.log("Resume Stream Token Transaction executed", exeTxn);
+  });
+  it("Cancel token stream from multisig", async () => {
+    const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
+      [multisig.publicKey.toBuffer()],
+      multisigProgram.programId
+    );
+    let zebecVaultAddress = await zebecVault(multisigSigner);
+    const pda_token_account = await spl.getAssociatedTokenAddress(
+      tokenMint.publicKey,
+      zebecVaultAddress,
+      true,
+      spl.TOKEN_PROGRAM_ID,
+      spl.ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    const dest_token_account = await spl.getAssociatedTokenAddress(
+      tokenMint.publicKey,
+      receiver.publicKey,
+      true,
+      spl.TOKEN_PROGRAM_ID,
+      spl.ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    const fee_token_account = await spl.getAssociatedTokenAddress(
+      tokenMint.publicKey,
+      await feeVault(fee_receiver.publicKey),
+      true,
+      spl.TOKEN_PROGRAM_ID,
+      spl.ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    const accounts = [
+      {
+        pubkey: zebecVaultAddress,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: receiver.publicKey,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: multisigSigner,
+        isWritable: true,
+        isSigner: true,
+      },
+      {
+        pubkey: fee_receiver.publicKey,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: await create_fee_account(fee_receiver.publicKey),
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: await feeVault(fee_receiver.publicKey),
+        isWritable: false,
+        isSigner: false,
+      },
+
+      {
+        pubkey: dataAccount.publicKey,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: await withdrawData(
+          PREFIX_TOKEN,
+          multisigSigner,
+          tokenMint.publicKey
+        ),
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: anchor.web3.SystemProgram.programId,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: spl.TOKEN_PROGRAM_ID,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: anchor.web3.SYSVAR_RENT_PUBKEY,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: tokenMint.publicKey,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: pda_token_account,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: dest_token_account,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: fee_token_account,
+        isWritable: true,
+        isSigner: false,
+      },
+    ];
+    const transaction = anchor.web3.Keypair.generate();
+    const data = zebecProgram.coder.instruction.encode("cancelTokenStream", {});
+    const txSize = getTxSize(accounts, owners, false, 0);
+    const tx = await multisigProgram.rpc.createTransaction(
+      pid,
+      accounts,
+      data,
+      {
+        accounts: {
+          multisig: multisig.publicKey,
+          transaction: transaction.publicKey,
+          proposer: ownerA.publicKey,
+        },
+        instructions: [
+          await multisigProgram.account.transaction.createInstruction(
+            transaction,
+            txSize
+          ),
+        ],
+        signers: [transaction, ownerA],
+      }
+    );
+    console.log("Cancel Stream Token Transaction created ", tx);
+    const approveTx = await multisigProgram.rpc.approve({
+      accounts: {
+        multisig: multisig.publicKey,
+        transaction: transaction.publicKey,
+        owner: ownerB.publicKey,
+      },
+      signers: [ownerB],
+    });
+    console.log(
+      "Cancel Stream Token TransactionTransaction Approved by ownerB",
+      approveTx
+    );
+    const exeTxn = await multisigProgram.rpc.executeTransaction({
+      accounts: {
+        multisig: multisig.publicKey,
+        multisigSigner,
+        transaction: transaction.publicKey,
+      },
+      remainingAccounts: accounts
+        .map((t: any) => {
+          if (t.pubkey.equals(multisigSigner)) {
+            return { ...t, isSigner: false };
+          }
+          return t;
+        })
+        .concat({
+          pubkey: zebecProgram.programId,
+          isWritable: false,
+          isSigner: false,
+        }),
+    });
+    console.log("Cancel Stream Token Transaction executed", exeTxn);
+  });
+  it("Instant Transfer from multisig", async () => {
+    const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
+      [multisig.publicKey.toBuffer()],
+      multisigProgram.programId
+    );
+    let zebecVaultAddress = await zebecVault(multisigSigner);
+    const pda_token_account = await spl.getAssociatedTokenAddress(
+      tokenMint.publicKey,
+      zebecVaultAddress,
+      true,
+      spl.TOKEN_PROGRAM_ID,
+      spl.ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    const dest_token_account = await spl.getAssociatedTokenAddress(
+      tokenMint.publicKey,
+      receiver.publicKey,
+      true,
+      spl.TOKEN_PROGRAM_ID,
+      spl.ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    const accounts = [
+      {
+        pubkey: zebecVaultAddress,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: receiver.publicKey,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: multisigSigner,
+        isWritable: true,
+        isSigner: true,
+      },
+      {
+        pubkey: await withdrawData(
+          PREFIX_TOKEN,
+          multisigSigner,
+          tokenMint.publicKey
+        ),
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: anchor.web3.SystemProgram.programId,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: spl.TOKEN_PROGRAM_ID,
+        isWritable: false,
+        isSigner: false,
+      },
+
+      {
+        pubkey: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+        isWritable: false,
+        isSigner: false,
+      },
+
+      {
+        pubkey: anchor.web3.SYSVAR_RENT_PUBKEY,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: tokenMint.publicKey,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: pda_token_account,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: dest_token_account,
+        isWritable: true,
+        isSigner: false,
+      },
+    ];
+    const transaction = anchor.web3.Keypair.generate();
+    const txSize = getTxSize(accounts, owners, false, 8);
+    const data = zebecProgram.coder.instruction.encode("instantTokenTransfer", {
+      amount: new anchor.BN(100),
+    });
+    const tx = await multisigProgram.rpc.createTransaction(
+      pid,
+      accounts,
+      data,
+      {
+        accounts: {
+          multisig: multisig.publicKey,
+          transaction: transaction.publicKey,
+          proposer: ownerA.publicKey,
+        },
+        instructions: [
+          await multisigProgram.account.transaction.createInstruction(
+            transaction,
+            txSize
+          ),
+        ],
+        signers: [transaction, ownerA],
+      }
+    );
+    console.log("Instant Transfer Transaction created ", tx);
+    const approveTx = await multisigProgram.rpc.approve({
+      accounts: {
+        multisig: multisig.publicKey,
+        transaction: transaction.publicKey,
+        owner: ownerB.publicKey,
+      },
+      signers: [ownerB],
+    });
+    console.log(
+      "Instant Token Transfer TransactionTransaction Approved by ownerB",
+      approveTx
+    );
+    const exeTxn = await multisigProgram.rpc.executeTransaction({
+      accounts: {
+        multisig: multisig.publicKey,
+        multisigSigner,
+        transaction: transaction.publicKey,
+      },
+      remainingAccounts: accounts
+        .map((t: any) => {
+          if (t.pubkey.equals(multisigSigner)) {
+            return { ...t, isSigner: false };
+          }
+          return t;
+        })
+        .concat({
+          pubkey: zebecProgram.programId,
+          isWritable: false,
+          isSigner: false,
+        }),
+    });
+    console.log("Instant Token Transfer Transaction executed", exeTxn);
+  });
+  it("Withdraw Deposited Token from multisig", async () => {
+    const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
+      [multisig.publicKey.toBuffer()],
+      multisigProgram.programId
+    );
+    const source_token_account = await spl.getAssociatedTokenAddress(
+      tokenMint.publicKey,
+      multisigSigner,
+      true,
+      spl.TOKEN_PROGRAM_ID,
+      spl.ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    let zebecVaultAddress = await zebecVault(multisigSigner);
+    const pda_token_account = await spl.getAssociatedTokenAddress(
+      tokenMint.publicKey,
+      zebecVaultAddress,
+      true,
+      spl.TOKEN_PROGRAM_ID,
+      spl.ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    const accounts = [
+      {
+        pubkey: zebecVaultAddress,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: await withdrawData(
+          PREFIX_TOKEN,
+          multisigSigner,
+          tokenMint.publicKey
+        ),
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: multisigSigner,
+        isWritable: true,
+        isSigner: true,
+      },
+      {
+        pubkey: anchor.web3.SystemProgram.programId,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: spl.TOKEN_PROGRAM_ID,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: anchor.web3.SYSVAR_RENT_PUBKEY,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: tokenMint.publicKey,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: source_token_account,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: pda_token_account,
+        isWritable: true,
+        isSigner: false,
+      },
+    ];
+    const transaction = anchor.web3.Keypair.generate();
+    const txSize = getTxSize(accounts, owners, false, 8);
+    const data = zebecProgram.coder.instruction.encode("tokenWithdrawal", {
+      amount: new anchor.BN(100),
+    });
+    const tx = await multisigProgram.rpc.createTransaction(
+      pid,
+      accounts,
+      data,
+      {
+        accounts: {
+          multisig: multisig.publicKey,
+          transaction: transaction.publicKey,
+          proposer: ownerA.publicKey,
+        },
+        instructions: [
+          await multisigProgram.account.transaction.createInstruction(
+            transaction,
+            txSize
+          ),
+        ],
+        signers: [transaction, ownerA],
+      }
+    );
+    console.log("Withdraw Deposited Token Transaction created ", tx);
+    const approveTx = await multisigProgram.rpc.approve({
+      accounts: {
+        multisig: multisig.publicKey,
+        transaction: transaction.publicKey,
+        owner: ownerB.publicKey,
+      },
+      signers: [ownerB],
+    });
+    console.log(
+      "Withdraw Deposited Token Transaction Approved by ownerB",
+      approveTx
+    );
+    const exeTxn = await multisigProgram.rpc.executeTransaction({
+      accounts: {
+        multisig: multisig.publicKey,
+        multisigSigner,
+        transaction: transaction.publicKey,
+      },
+      remainingAccounts: accounts
+        .map((t: any) => {
+          if (t.pubkey.equals(multisigSigner)) {
+            return { ...t, isSigner: false };
+          }
+          return t;
+        })
+        .concat({
+          pubkey: zebecProgram.programId,
+          isWritable: false,
+          isSigner: false,
+        }),
+    });
+    console.log("Withdraw Deposited Token Transaction executed", exeTxn);
   });
 });
