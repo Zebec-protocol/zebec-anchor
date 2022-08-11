@@ -7,14 +7,14 @@ import { PREFIX_TOKEN } from './src/Constants';
 const provider = anchor.Provider.local();
 anchor.setProvider(provider)
 // Program details
-const programId = new anchor.web3.PublicKey("14NJEfpvoq6PywHdwFhXcfnHTsPUK3cScCaezKBSDWLd");
+const programId = new anchor.web3.PublicKey("Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia");
 const idl = JSON.parse(
 require("fs").readFileSync("./target/idl/zebec.json", "utf8")
 );
 const idlMultisig = JSON.parse(
     require("fs").readFileSync("./target/idl/serum_multisig.json", "utf8")
   );
-const program = new anchor.Program(idlMultisig, new anchor.web3.PublicKey("5BU6x2H7WXeyaP75D7daNJQAipZfVUr5FM9zdhzajK6p"));const programZebec = new anchor.Program(idl, programId);
+const program = new anchor.Program(idlMultisig, new anchor.web3.PublicKey("b6ZPysThkApNx2YDiGsPUiYPE7Ub1kTRdCWp7gBkzbr"));const programZebec = new anchor.Program(idl, programId);
 const pid = programZebec.programId
 
 // Accounts
@@ -35,56 +35,54 @@ const sender =  anchor.web3.Keypair.generate();
 const receiver =  anchor.web3.Keypair.generate();
 const fee_receiver = new anchor.web3.Keypair();
 const createUserAndAssociatedWallet = async (connection: anchor.web3.Connection, mint?: anchor.web3.PublicKey): Promise<anchor.web3.PublicKey | undefined> => {
-    let userAssociatedTokenAccount: anchor.web3.PublicKey | undefined = undefined;
-    // Fund sender with some SOL
-    let txFund = new anchor.web3.Transaction();
-    txFund.add(anchor.web3.SystemProgram.transfer({
-        fromPubkey: provider.wallet.publicKey,
-        toPubkey: sender.publicKey,
-        lamports: 5 * anchor.web3.LAMPORTS_PER_SOL,
-    }));
-    const sigTxFund = await provider.send(txFund);
-    console.log(`Funded new account with 5 SOL: ${sigTxFund}`);
-    if (mint) {
-      const [multisigSigner, nonce] =
-          await anchor.web3.PublicKey.findProgramAddress(
-              [multisig.publicKey.toBuffer()],
-              program.programId
-          );       
-        // Create a token account for the sender and mint some tokens
-        userAssociatedTokenAccount = await spl.getAssociatedTokenAddress(
-            mint,
-            multisigSigner,
-            true,
-            spl.TOKEN_PROGRAM_ID,
-            spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-        )
-        const txFundTokenAccount = new anchor.web3.Transaction();
-        txFundTokenAccount.add(spl.createAssociatedTokenAccountInstruction(
-            sender.publicKey,
-            userAssociatedTokenAccount,
-            multisigSigner,
-            mint,
-            spl.TOKEN_PROGRAM_ID,
-            spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-        ))
-        txFundTokenAccount.add(spl.createMintToInstruction(
-            mint,
-            userAssociatedTokenAccount,
-            provider.wallet.publicKey,
-            1337000000,
-            [],
-            spl.TOKEN_PROGRAM_ID,
-        ));
-        try {
-          const txFundTokenSig = await provider.send(txFundTokenAccount, [sender]);
-          console.log(`New associated account for mint ${mint.toBase58()}: ${txFundTokenSig}`);
-        } catch (error) {
-          console.log(error)
-        }
+  let userAssociatedTokenAccount: anchor.web3.PublicKey | undefined = undefined;
+  // Fund sender with some SOL
+  let txFund = new anchor.web3.Transaction();
+  txFund.add(anchor.web3.SystemProgram.transfer({
+      fromPubkey: provider.wallet.publicKey,
+      toPubkey: sender.publicKey,
+      lamports: 5 * anchor.web3.LAMPORTS_PER_SOL,
+  }));
+  const sigTxFund = await provider.send(txFund);
+  if (mint) {
+    const [multisigSigner, nonce] =
+        await anchor.web3.PublicKey.findProgramAddress(
+            [multisig.publicKey.toBuffer()],
+            program.programId
+        );       
+      // Create a token account for the sender and mint some tokens
+      userAssociatedTokenAccount = await spl.getAssociatedTokenAddress(
+          mint,
+          multisigSigner,
+          true,
+          spl.TOKEN_PROGRAM_ID,
+          spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+      )
+      const txFundTokenAccount = new anchor.web3.Transaction();
+      txFundTokenAccount.add(spl.createAssociatedTokenAccountInstruction(
+          sender.publicKey,
+          userAssociatedTokenAccount,
+          multisigSigner,
+          mint,
+          spl.TOKEN_PROGRAM_ID,
+          spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+      ))
+      txFundTokenAccount.add(spl.createMintToInstruction(
+          mint,
+          userAssociatedTokenAccount,
+          provider.wallet.publicKey,
+          1337000000,
+          [],
+          spl.TOKEN_PROGRAM_ID,
+      ));
+      try {
+        const txFundTokenSig = await provider.send(txFundTokenAccount, [sender]);
+      } catch (error) {
+        console.log(error)
       }
-      return userAssociatedTokenAccount;
-  }
+    }
+    return userAssociatedTokenAccount;
+}
 describe("multisig", () => {
     it("Tests the multisig program", async () => {
         const multisigSize = 200;

@@ -7,14 +7,14 @@ import { airdropSol } from './src/utils';
 const provider = anchor.Provider.local();
 anchor.setProvider(provider)
 // Program details
-const programId = new anchor.web3.PublicKey("14NJEfpvoq6PywHdwFhXcfnHTsPUK3cScCaezKBSDWLd");
+const programId = new anchor.web3.PublicKey("Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia");
 const idl = JSON.parse(
 require("fs").readFileSync("./target/idl/zebec.json", "utf8")
 );
 const idlMultisig = JSON.parse(
     require("fs").readFileSync("./target/idl/serum_multisig.json", "utf8")
   );
-const program = new anchor.Program(idlMultisig, new anchor.web3.PublicKey("5BU6x2H7WXeyaP75D7daNJQAipZfVUr5FM9zdhzajK6p"));
+const program = new anchor.Program(idlMultisig, new anchor.web3.PublicKey("b6ZPysThkApNx2YDiGsPUiYPE7Ub1kTRdCWp7gBkzbr"));
 const programZebec = new anchor.Program(idl, programId);
 const pid = programZebec.programId
 
