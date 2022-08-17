@@ -638,7 +638,8 @@ pub struct CancelTokenStream<'info> {
    pub rent: Sysvar<'info, Rent>,
    pub mint:Account<'info,Mint>,
    #[account(
-       mut,
+       init_if_needed,
+       payer = source_account,
        associated_token::mint = mint,
        associated_token::authority = zebec_vault,
    )]

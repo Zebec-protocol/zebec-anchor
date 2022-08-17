@@ -169,8 +169,8 @@ describe("zebec token", () => {
   });
   it("Token Stream Update", async () => {
     let now = await getClusterTime(provider.connection);
-    startTime = new anchor.BN(now - 20);
-    endTime = new anchor.BN(now + 10);
+    startTime = new anchor.BN(now - 40);
+    endTime = new anchor.BN(now + 40);
     const amount = new anchor.BN(4000000);
     const tx = await zebecProgram.rpc.tokenStreamUpdate(
       startTime,

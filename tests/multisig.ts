@@ -14,7 +14,7 @@ import {
 import { airdropSol, getTxSize } from "./src/utils";
 
 // Configure the client to use the local cluster.
-const provider = anchor.Provider.local();
+const provider = anchor.Provider.env();
 anchor.setProvider(provider);
 // Program details
 const pid = zebecProgram.programId;
@@ -43,11 +43,10 @@ describe("multisig", () => {
     const num_owner = owners.length + 1;
     const multisigSize = 8 + 8 + 32 * num_owner + 8 + 1 + 4;
     const threshold = new anchor.BN(2);
-    const [multisigSigner, nonce] =
-      await anchor.web3.PublicKey.findProgramAddress(
-        [multisig.publicKey.toBuffer()],
-        multisigProgram.programId
-      );
+    const [_, nonce] = await anchor.web3.PublicKey.findProgramAddress(
+      [multisig.publicKey.toBuffer()],
+      multisigProgram.programId
+    );
     // owners - number of multisig owners
     // threshold - number of signers required to confirm the transaction
     await multisigProgram.rpc.createMultisig(owners, threshold, nonce, {
@@ -64,11 +63,10 @@ describe("multisig", () => {
     });
   });
   it("Airdrop Solana", async () => {
-    const [multisigSigner, nonce] =
-      await anchor.web3.PublicKey.findProgramAddress(
-        [multisig.publicKey.toBuffer()],
-        multisigProgram.programId
-      );
+    const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
+      [multisig.publicKey.toBuffer()],
+      multisigProgram.programId
+    );
     await airdropSol(provider.connection, sender.publicKey);
     await airdropSol(provider.connection, fee_receiver.publicKey);
     await airdropSol(provider.connection, receiver.publicKey);
@@ -553,6 +551,27 @@ describe("multisig", () => {
     });
     console.log("Resume Stream SOl Transaction executed", exeTxn);
   });
+  it("Withdraw Sol", async () => {
+    const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
+      [multisig.publicKey.toBuffer()],
+      multisigProgram.programId
+    );
+    const tx = await zebecProgram.rpc.withdrawStream({
+      accounts: {
+        zebecVault: await zebecVault(multisigSigner),
+        sender: multisigSigner,
+        receiver: receiver.publicKey,
+        dataAccount: dataAccount.publicKey,
+        withdrawData: await withdrawData(PREFIX, multisigSigner),
+        feeOwner: fee_receiver.publicKey,
+        vaultData: await create_fee_account(fee_receiver.publicKey),
+        feeVault: await feeVault(fee_receiver.publicKey),
+        systemProgram: anchor.web3.SystemProgram.programId,
+      },
+      signers: [receiver],
+    });
+    console.log("Your transaction signature", tx);
+  });
   it("Cancel stream from multisig", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
       [multisig.publicKey.toBuffer()],
@@ -840,5 +859,19 @@ describe("multisig", () => {
         }),
     });
     console.log("Withdraw Deposited Native Transaction  executed", exeTxn);
+  });
+  it("Retrieve Fees", async () => {
+    const tx = await zebecProgram.rpc.withdrawFeesSol({
+      accounts: {
+        feeOwner: fee_receiver.publicKey,
+        vaultData: await create_fee_account(fee_receiver.publicKey),
+        feeVault: await feeVault(fee_receiver.publicKey),
+        systemProgram: anchor.web3.SystemProgram.programId,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+      signers: [fee_receiver],
+      instructions: [],
+    });
+    console.log("Your transaction signature is ", tx);
   });
 });
