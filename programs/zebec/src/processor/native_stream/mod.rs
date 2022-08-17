@@ -27,6 +27,7 @@ pub fn process_native_stream(
     data_account.sender = ctx.accounts.sender.key();
     data_account.receiver = ctx.accounts.receiver.key();
     data_account.fee_owner=ctx.accounts.fee_owner.key();
+    data_account.paused_at=0;
     data_account.paused_amt=0;
     data_account.can_cancel=can_cancel;
     data_account.can_update=can_update;
@@ -394,7 +395,7 @@ pub struct Pause<'info> {
         constraint = data_account.receiver == receiver.key(),
         constraint = data_account.sender == sender.key()
     )]
-    pub data_account:  Account<'info, Stream>,
+    pub data_account:  Box<Account<'info, Stream>>,
 }
 #[derive(Accounts)]
 pub struct Cancel<'info> {

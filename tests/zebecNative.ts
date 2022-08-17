@@ -1,9 +1,9 @@
 import * as anchor from '@project-serum/anchor';
 import { assert } from "chai";
 import { feeVault,create_fee_account,zebecVault,withdrawData } from './src/Accounts';
-import { airdropSol,getClusterTime,solFromProvider } from './src/utils';
+import { getClusterTime,solFromProvider} from './src/utils';
 import {PREFIX,STREAM_SIZE} from './src/Constants'
-import { bytes } from '@project-serum/anchor/dist/cjs/utils';
+
 // Configure the client to use the local cluster.
 const provider = anchor.Provider.env();
 anchor.setProvider(provider)
@@ -100,7 +100,7 @@ describe('zebec native', () => {
   it('Update Stream', async () => {
     let now = await getClusterTime(provider.connection)
     const startTime =new anchor.BN(now-40)
-    const endTime=new anchor.BN(now+10)
+    const endTime=new anchor.BN(now+40)
     const amount=new anchor.BN(anchor.web3.LAMPORTS_PER_SOL)
     const tx = await program.rpc.nativeStreamUpdate(startTime,endTime,amount,{
       accounts:{
@@ -124,23 +124,7 @@ describe('zebec native', () => {
     assert.equal(data_account.receiver.toString(),receiver.publicKey.toString());
     assert.equal(data_account.paused.toString(),"0");   
   });
-  it('Withdraw Sol', async () => {
-    const tx = await program.rpc.withdrawStream({
-      accounts:{
-        zebecVault: await zebecVault(sender.publicKey),
-        sender: sender.publicKey,
-        receiver:receiver.publicKey,
-        dataAccount:dataAccount.publicKey,
-        withdrawData:await withdrawData(PREFIX,sender.publicKey),
-        feeOwner:fee_receiver.publicKey,
-        vaultData:await create_fee_account(fee_receiver.publicKey),
-        feeVault:await feeVault(fee_receiver.publicKey),
-        systemProgram: anchor.web3.SystemProgram.programId,
-      },
-      signers:[receiver],
-    });
-    console.log("Your transaction signature", tx);
-  });
+
   it('Pause Stream', async () => {
     const tx = await program.rpc.pauseStream({
       accounts:{
@@ -164,6 +148,23 @@ describe('zebec native', () => {
       signers:[sender],
       instructions:[
       ],
+    });
+    console.log("Your transaction signature", tx);
+  });
+  it('Withdraw Sol', async () => {
+    const tx = await program.rpc.withdrawStream({
+      accounts:{
+        zebecVault: await zebecVault(sender.publicKey),
+        sender: sender.publicKey,
+        receiver:receiver.publicKey,
+        dataAccount:dataAccount.publicKey,
+        withdrawData:await withdrawData(PREFIX,sender.publicKey),
+        feeOwner:fee_receiver.publicKey,
+        vaultData:await create_fee_account(fee_receiver.publicKey),
+        feeVault:await feeVault(fee_receiver.publicKey),
+        systemProgram: anchor.web3.SystemProgram.programId,
+      },
+      signers:[receiver],
     });
     console.log("Your transaction signature", tx);
   });
