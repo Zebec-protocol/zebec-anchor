@@ -4,10 +4,10 @@ import * as anchor from "@project-serum/anchor";
 const provider = anchor.Provider.env();
 anchor.setProvider(provider);
 const programId = new anchor.web3.PublicKey(
-  "FfEvEBBnUFSLtetZmU7yA9wDECvTy1MryMy2QkVH3fQa"
+  "Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia"
 );
 const multisigProgramId = new anchor.web3.PublicKey(
-  "7yAc31uU6YzsLVzeKMkFpQTTjiMwcCEZg2ojh14Rq6be"
+  "b6ZPysThkApNx2YDiGsPUiYPE7Ub1kTRdCWp7gBkzbr"
 );
 const idl = JSON.parse(
   require("fs").readFileSync("./target/idl/zebec.json", "utf8")
