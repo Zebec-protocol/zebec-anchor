@@ -1,6 +1,6 @@
 // Zebec Anchor Program - https://docs.zebec.io/
 use anchor_lang::prelude::*;
-declare_id!("14NJEfpvoq6PywHdwFhXcfnHTsPUK3cScCaezKBSDWLd");
+declare_id!("Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia");
 
 pub mod utils;
 pub mod error;
@@ -39,8 +39,8 @@ mod zebec {
         start_time: u64,
         end_time: u64,
         amount: u64,
-        can_cancel:u64,
-        can_update:u64,
+        can_cancel:bool,
+        can_update:bool,
     )-> Result<()> {
         process_native_stream(ctx,start_time,end_time,amount,can_cancel,can_update)
     }
@@ -90,8 +90,8 @@ mod zebec {
         start_time:u64,
         end_time:u64,
         amount:u64,
-        can_cancel:u64,
-        can_update:u64,
+        can_cancel:bool,
+        can_update:bool,
     ) ->Result<()>{
         process_token_stream(ctx,start_time,end_time,amount,can_cancel,can_update)
     }

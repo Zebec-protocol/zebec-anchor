@@ -38,7 +38,6 @@ pub fn process_withdraw_fees_sol(
     create_transfer_signed(ctx.accounts.fee_vault.to_account_info(),ctx.accounts.fee_owner.to_account_info(),ctx.accounts.fee_vault.lamports())?;
     Ok(())
 }
-
 #[derive(Accounts)]
 pub struct InitializeFeeVault<'info> {
     #[account(

@@ -1,12 +1,20 @@
-[programs.localnet]
-zebec = "14NJEfpvoq6PywHdwFhXcfnHTsPUK3cScCaezKBSDWLd"
+[programs.devnet] 
+zebec = "Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia" 
 
-[registry]
-url = "https://anchor.projectserum.com"
+[programs.localnet] 
+zebec = "Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia" 
+serum_multisig = "b6ZPysThkApNx2YDiGsPUiYPE7Ub1kTRdCWp7gBkzbr" 
 
-[provider]
-cluster = "localnet"
-wallet = "~/.config/solana/id.json"
+  
+[registry] 
+url = "https://anchor.projectserum.com" 
 
-[scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/zebec.ts"
+  
+
+[provider] 
+cluster = "localnet" 
+wallet = "~/.config/solana/id.json" 
+
+  
+[scripts] 
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/**" 
