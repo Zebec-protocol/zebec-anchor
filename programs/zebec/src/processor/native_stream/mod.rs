@@ -502,3 +502,40 @@ impl Stream {
 pub struct StreamedAmt {
     pub amount: u64,
 }
+
+#[cfg(test)]
+mod tests {
+   use super::*;
+ 
+   #[test]
+   fn test_allowed_amount()
+   {
+      let stream = example_stream();
+  
+       assert_eq!(stream.allowed_amt(stream.start_time),0);
+       assert_eq!(stream.allowed_amt(stream.end_time),stream.amount);
+ 
+   }
+ 
+ 
+   fn example_stream()->Stream
+   {
+      
+       Stream{
+           start_time: 1660820300,
+           end_time:   1660820400,
+           amount: 100_00_00_000,
+           paused: 0,
+           withdraw_limit: 10000,
+           sender:   Pubkey::default(),
+           receiver: Pubkey::default(),
+           withdrawn: 0,
+           paused_at: 0,
+           fee_owner:Pubkey::default(),
+           paused_amt:0,
+           can_cancel:true,
+           can_update:true,
+ 
+       }
+   }
+}
