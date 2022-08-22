@@ -32,14 +32,7 @@ pub fn process_native_stream(
     data_account.can_cancel=can_cancel;
     data_account.can_update=can_update;
     withdraw_state.amount+=amount;
-    emit!(
-        StreamStart{
-            start_time:start_time,
-            end_time:end_time,
-            receiver: ctx.accounts.receiver.key(),
-            amount:amount,
-        }
-    );
+
     Ok(())
 }
 pub fn  process_update_native_stream(
@@ -509,14 +502,6 @@ impl Stream {
 #[account]
 pub struct StreamedAmt {
     pub amount: u64,
-}
-#[event]
-pub struct StreamStart
-{
-    pub start_time: u64,
-    pub end_time: u64,
-    pub amount: u64,
-    pub receiver: Pubkey,
 }
 #[cfg(test)]
 mod tests {
