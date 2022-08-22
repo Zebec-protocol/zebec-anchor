@@ -140,3 +140,32 @@ pub struct Vault
     pub owner:Pubkey,
     pub fee_percentage:u64,
 } 
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn creating_fee_owner() 
+    {
+        let fee_owner= Pubkey::default();
+        let program_id =Pubkey::default();
+        let fee_percentage=25;
+        let (vault_address,_)=Pubkey::find_program_address( &[
+            &fee_owner.key().to_bytes(),
+            OPERATE.as_bytes(),
+        ],
+        &program_id);
+        let vault_data = Vault
+        {
+            owner:fee_owner,
+            vault_address:vault_address,
+            fee_percentage:fee_percentage,
+        };
+    
+        assert_eq!(vault_data.owner, fee_owner);
+        assert_eq!(vault_data.vault_address, vault_address);
+        assert_eq!(vault_data.fee_percentage,fee_percentage);
+    }
+
+}
