@@ -2,7 +2,7 @@ import * as anchor from "@project-serum/anchor";
 import * as spl from "@solana/spl-token";
 import { assert } from "chai";
 import { PublicKey } from "@solana/web3.js";
-import { airdropSol, getTxSize } from "./src/utils";
+import { solFromProvider, getTxSize } from "./src/utils";
 import {
   createMint,
   zebecVault,
@@ -133,11 +133,9 @@ describe("multisig Token", () => {
       [multisig.publicKey.toBuffer()],
       multisigProgram.programId
     );
-    await airdropSol(provider.connection, sender.publicKey);
-    await airdropSol(provider.connection, receiver.publicKey);
-    await airdropSol(provider.connection, fee_receiver.publicKey);
-    await airdropSol(provider.connection, ownerA.publicKey);
-    await airdropSol(provider.connection, multisigSigner);
+    await solFromProvider(provider,ownerA.publicKey,2);
+    await solFromProvider(provider,fee_receiver.publicKey,0.1);
+    await solFromProvider(provider,multisigSigner,2);
   });
   it("Create Set Vault", async () => {
     const fee_percentage = new anchor.BN(25);
@@ -585,7 +583,6 @@ describe("multisig Token", () => {
       "Multisig Stream Token Transaction Approved by ownerB",
       approveTx
     );
-    // await delay(100000);
     const exeTxn = await multisigProgram.rpc.executeTransaction({
       accounts: {
         multisig: multisig.publicKey,
@@ -668,7 +665,6 @@ describe("multisig Token", () => {
       "Resume Stream Token TransactionTransaction Approved by ownerB",
       approveTx
     );
-    // await delay(100000);
     const exeTxn = await multisigProgram.rpc.executeTransaction({
       accounts: {
         multisig: multisig.publicKey,

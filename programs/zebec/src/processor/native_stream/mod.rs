@@ -32,6 +32,14 @@ pub fn process_native_stream(
     data_account.can_cancel=can_cancel;
     data_account.can_update=can_update;
     withdraw_state.amount+=amount;
+    emit!(
+        StreamStart{
+            start_time:start_time,
+            end_time:end_time,
+            receiver: ctx.accounts.receiver.key(),
+            amount:amount,
+        }
+    );
     Ok(())
 }
 pub fn  process_update_native_stream(
@@ -502,22 +510,48 @@ impl Stream {
 pub struct StreamedAmt {
     pub amount: u64,
 }
-
+#[event]
+pub struct StreamStart
+{
+    pub start_time: u64,
+    pub end_time: u64,
+    pub amount: u64,
+    pub receiver: Pubkey,
+}
 #[cfg(test)]
 mod tests {
    use super::*;
  
    #[test]
+   fn test_withdraw_data()
+   {
+      let withdraw = &mut example_withdraw_data();
+      let amount = 3;
+      withdraw.amount+=amount;
+      assert_eq!(withdraw.amount,3);
+
+      let withdrawn = 2;
+      //when withdrawn
+      withdraw.amount-=  withdrawn;
+
+      //when canceled
+      withdraw.amount-=amount- withdrawn;  
+      assert_eq!(withdraw.amount,0);
+   }
+
+   #[test]
    fn test_allowed_amount()
    {
-      let stream = example_stream();
+      let stream =example_stream();
   
        assert_eq!(stream.allowed_amt(stream.start_time),0);
        assert_eq!(stream.allowed_amt(stream.end_time),stream.amount);
- 
+
+
+       
    }
  
- 
+   
    fn example_stream()->Stream
    {
       
@@ -537,5 +571,11 @@ mod tests {
            can_update:true,
  
        }
+   }
+   fn example_withdraw_data()->StreamedAmt
+   {
+    StreamedAmt{
+        amount:0,
+    }
    }
 }

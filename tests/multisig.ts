@@ -11,7 +11,7 @@ import {
   zebecProgram,
   multisigProgram,
 } from "./src/Constants";
-import { airdropSol, getTxSize } from "./src/utils";
+import { solFromProvider, getTxSize } from "./src/utils";
 
 // Configure the client to use the local cluster.
 const provider = anchor.Provider.env();
@@ -67,11 +67,9 @@ describe("multisig", () => {
       [multisig.publicKey.toBuffer()],
       multisigProgram.programId
     );
-    await airdropSol(provider.connection, sender.publicKey);
-    await airdropSol(provider.connection, fee_receiver.publicKey);
-    await airdropSol(provider.connection, receiver.publicKey);
-    await airdropSol(provider.connection, ownerA.publicKey);
-    await airdropSol(provider.connection, multisigSigner);
+    await solFromProvider(provider,ownerA.publicKey,2);
+    await solFromProvider(provider,fee_receiver.publicKey,0.1);
+    await solFromProvider(provider,multisigSigner,2);
   });
   it("Create Set Vault", async () => {
     const fee_percentage = new anchor.BN(25);
