@@ -32,6 +32,7 @@ let dataAccount = anchor.web3.Keypair.generate();
 //user accounts
 const sender = anchor.web3.Keypair.generate();
 const receiver = anchor.web3.Keypair.generate();
+const receiver_direct = anchor.web3.Keypair.generate();
 const fee_receiver = new anchor.web3.Keypair();
 
 console.log("Sender key: " + sender.publicKey.toBase58());
@@ -69,7 +70,7 @@ describe("multisig", () => {
     );
     await solFromProvider(provider,ownerA.publicKey,2);
     await solFromProvider(provider,fee_receiver.publicKey,0.1);
-    await solFromProvider(provider,multisigSigner,2);
+    await solFromProvider(provider,multisigSigner,3);
   });
   it("Create Set Vault", async () => {
     const fee_percentage = new anchor.BN(25);
@@ -169,6 +170,93 @@ describe("multisig", () => {
         }),
     });
   });
+  it("Send Sol directly from multisig", async () => {
+    // multisigSigner is sender, all the transaction will be signed from multisigSigner account
+    const [multisigSigner, nonce] =
+      await anchor.web3.PublicKey.findProgramAddress(
+        [multisig.publicKey.toBuffer()],
+        multisigProgram.programId
+      );
+    const pid = zebecProgram.programId;
+    const accounts = [
+      {
+        pubkey: multisigSigner,
+        isWritable: true,
+        isSigner: true,
+      },
+      {
+        pubkey: receiver_direct.publicKey,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: anchor.web3.SystemProgram.programId,
+        isWritable: false,
+        isSigner: false,
+      }
+    ];
+    const transaction = anchor.web3.Keypair.generate();
+    const data = zebecProgram.coder.instruction.encode("sendSolDirectly", {
+      amount: new anchor.BN(1000000),
+    });
+    const txSize = getTxSize(accounts, owners, false, 8);
+    const tx = await multisigProgram.rpc.createTransaction(
+      pid,
+      accounts,
+      data,
+      {
+        accounts: {
+          multisig: multisig.publicKey,
+          transaction: transaction.publicKey,
+          proposer: ownerA.publicKey,
+        },
+        instructions: [
+          await multisigProgram.account.transaction.createInstruction(
+            transaction,
+            txSize
+          ),
+        ],
+        signers: [transaction, ownerA],
+      }
+    );
+    console.log("Multisig send sol directly", tx);
+    const approveTx = await multisigProgram.rpc.approve({
+      accounts: {
+        multisig: multisig.publicKey,
+        transaction: transaction.publicKey,
+        owner: ownerB.publicKey,
+      },
+      signers: [ownerB],
+    });
+    console.log(
+      "Multisig Send SOl Transaction Approved by ownerB",
+      approveTx
+    );
+
+    const executeTx=await multisigProgram.rpc.executeTransaction({
+      accounts: {
+        multisig: multisig.publicKey,
+        multisigSigner,
+        transaction: transaction.publicKey,
+      },
+      remainingAccounts: accounts
+        .map((t: any) => {
+          if (t.pubkey.equals(multisigSigner)) {
+            return { ...t, isSigner: false };
+          }
+          return t;
+        })
+        .concat({
+          pubkey: zebecProgram.programId,
+          isWritable: false,
+          isSigner: false,
+        }),
+    });
+    console.log(
+      "Multisig Send SOl Transaction execute",
+      executeTx
+    );
+  });  
   it("Creating stream from multisig", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
       [multisig.publicKey.toBuffer()],
@@ -267,7 +355,7 @@ describe("multisig", () => {
       signers: [ownerB],
     });
     console.log(
-      "Multisig Stream SOl TransactionTransaction Approved by ownerB",
+      "Multisig Stream SOl Transaction Approved by ownerB",
       approveTx
     );
     const exeTxn = await multisigProgram.rpc.executeTransaction({
@@ -289,7 +377,7 @@ describe("multisig", () => {
           isSigner: false,
         }),
     });
-    console.log("Multisig Stream SOl TransactionTransaction  executed", exeTxn);
+    console.log("Multisig Stream SOl Transaction executed", exeTxn);
   });
   it("Updating stream from multisig", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(

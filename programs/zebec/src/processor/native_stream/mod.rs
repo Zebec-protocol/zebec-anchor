@@ -97,8 +97,9 @@ pub fn process_withdraw_stream(
     //commission
     create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.fee_vault.to_account_info(),comission)?;
     data_account.withdrawn= data_account.withdrawn.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
-    if data_account.withdrawn == data_account.amount { 
-        create_transfer_signed(data_account.to_account_info(),ctx.accounts.sender.to_account_info(), data_account.to_account_info().lamports())?;
+    if (data_account.withdrawn+data_account.paused_amt) >= data_account.amount 
+    {
+       create_transfer_signed(data_account.to_account_info(),ctx.accounts.sender.to_account_info(),data_account.to_account_info().lamports())?;
     }
     withdraw_state.amount-=allowed_amt;
     Ok(())
@@ -175,7 +176,6 @@ pub fn process_cancel_stream(
     //changing withdraw state
     withdraw_state.amount-=data_account.amount-data_account.withdrawn;
     //closing the data account to end the stream
-    create_transfer_signed(data_account.to_account_info(),ctx.accounts.sender.to_account_info(), data_account.to_account_info().lamports())?;       
     Ok(())
 } 
 pub fn process_native_transfer(
@@ -242,7 +242,6 @@ pub fn process_sol_directly(
     create_transfer(ctx.accounts.sender.to_account_info(),ctx.accounts.receiver.to_account_info(),acc,amount)?;
     Ok(())
 }
-
 #[derive(Accounts)]
 pub struct InitializeMasterPda<'info> {
     #[account(    
@@ -424,7 +423,7 @@ pub struct Cancel<'info> {
        constraint = data_account.receiver == receiver.key(),
        constraint = data_account.sender == sender.key(),
        constraint= data_account.fee_owner==fee_owner.key(),
-       close = data_account,
+       close = sender,//to close the data account and send rent exempt lamports to sender
    )]
    pub data_account:  Account<'info, Stream>,
    #[account(

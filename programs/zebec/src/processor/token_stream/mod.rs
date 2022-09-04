@@ -212,11 +212,9 @@ pub fn process_cancel_token_stream(
                                     ctx.accounts.zebec_vault.to_account_info(),
                                     outer,
                                     comission)?;  
-            //changing withdraw state
+    //changing withdraw state
     withdraw_state.amount-=data_account.amount-data_account.withdrawn;
-     //closing the data account to end the stream
-    create_transfer_signed(data_account.to_account_info(),ctx.accounts.source_account.to_account_info(), data_account.to_account_info().lamports())?; 
-
+    //data account gets closed after the end     
     Ok(())
 }
 pub fn process_token_withdrawal(

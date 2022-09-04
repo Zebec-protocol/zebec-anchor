@@ -2,7 +2,7 @@ import * as anchor from "@project-serum/anchor";
 import { assert } from "chai";
 import * as spl from "@solana/spl-token";
 import { PublicKey } from "@solana/web3.js";
-import { airdropSol, solFromProvider, getClusterTime } from "./src/utils";
+import { solFromProvider, getClusterTime } from "./src/utils";
 import {
   getTokenBalance,
   createMint,
