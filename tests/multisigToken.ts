@@ -136,6 +136,7 @@ describe("multisig Token", () => {
     await solFromProvider(provider,ownerA.publicKey,2);
     await solFromProvider(provider,fee_receiver.publicKey,0.1);
     await solFromProvider(provider,multisigSigner,2);
+    await solFromProvider(provider,receiver.publicKey,1);
   });
   it("Create Set Vault", async () => {
     const fee_percentage = new anchor.BN(25);

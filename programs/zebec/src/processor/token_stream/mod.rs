@@ -5,7 +5,7 @@ use anchor_spl::{associated_token::AssociatedToken, token::{Mint, Token, TokenAc
 pub fn process_deposit_token(
     ctx: Context<TokenDeposit>,
     amount: u64,
-)   ->Result<()>{
+)  ->Result<()>{
     create_transfer_token(
     ctx.accounts.token_program.to_account_info(), 
     ctx.accounts.source_account_token_account.to_account_info(),
@@ -156,7 +156,7 @@ pub fn process_pause_resume_token_stream(
 }
 pub fn process_cancel_token_stream(
     ctx: Context<CancelTokenStream>,
-)   ->Result<()>{
+) ->Result<()>{
     let data_account =&mut ctx.accounts.data_account;
     let withdraw_state = &mut ctx.accounts.withdraw_data;
     let vault_token_account=&mut ctx.accounts.pda_account_token_account;
@@ -222,7 +222,7 @@ pub fn process_cancel_token_stream(
 pub fn process_token_withdrawal(
     ctx: Context<InitializerTokenWithdrawal>,
     amount: u64,
-) -> Result<()>{
+) ->Result<()>{
     let withdraw_state = &mut ctx.accounts.withdraw_data;
     let vault_token_account=&mut ctx.accounts.pda_account_token_account;
     
@@ -269,7 +269,7 @@ pub fn process_token_withdrawal(
 pub fn process_instant_token_transfer(
     ctx: Context<TokenInstantTransfer>,
     amount: u64,
-) -> Result<()>{
+) ->Result<()>{
     let withdraw_state = &mut ctx.accounts.withdraw_data;
     let vault_token_account=&mut ctx.accounts.pda_account_token_account;
     
@@ -312,6 +312,18 @@ pub fn process_instant_token_transfer(
     amount)?;
     }
     Ok(())
+}
+pub fn process_send_token_directly(
+    ctx:Context<TokenDirectTransfer>,
+    amount:u64,
+) ->Result<()>{
+    create_transfer_token(
+        ctx.accounts.token_program.to_account_info(), 
+        ctx.accounts.source_account_token_account.to_account_info(),
+        ctx.accounts.dest_token_account.to_account_info(),
+        ctx.accounts.source_account.to_account_info(), 
+        amount)?;
+      Ok(())
 }
 #[derive(Accounts)]
 pub struct TokenStream<'info> {
@@ -563,6 +575,32 @@ pub struct TokenInstantTransfer<'info> {
         associated_token::authority = zebec_vault,
     )]
     pda_account_token_account: Box<Account<'info, TokenAccount>>,
+    #[account(
+        init_if_needed,
+        payer = source_account,
+        associated_token::mint = mint,
+        associated_token::authority = dest_account,
+    )]
+    dest_token_account: Box<Account<'info, TokenAccount>>,
+}
+#[derive(Accounts)]
+pub struct TokenDirectTransfer<'info> {
+    #[account(mut)]
+    pub source_account: Signer<'info>,
+    /// CHECK: This is the receiver account, since the funds are transferred directly, we do not need to check it
+    #[account(mut)]
+    pub dest_account: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+    pub token_program:Program<'info,Token>,
+    pub associated_token_program:Program<'info,AssociatedToken>,
+    pub rent: Sysvar<'info, Rent>,
+    pub mint:Account<'info,Mint>,
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = source_account,
+    )]
+    source_account_token_account: Box<Account<'info, TokenAccount>>,
     #[account(
         init_if_needed,
         payer = source_account,

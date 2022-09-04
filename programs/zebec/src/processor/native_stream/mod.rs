@@ -35,7 +35,7 @@ pub fn process_native_stream(
 
     Ok(())
 }
-pub fn  process_update_native_stream(
+pub fn process_update_native_stream(
     ctx: Context<StreamUpdate>,
     start_time: u64,
     end_time: u64,
@@ -234,6 +234,14 @@ pub fn process_native_withdrawal(
     }
     Ok(())
 }
+pub fn process_sol_directly(
+    ctx:Context<TransferDirect>,
+    amount:u64,
+) ->Result<()>{
+    let acc = ctx.accounts.system_program.to_account_info();  
+    create_transfer(ctx.accounts.sender.to_account_info(),ctx.accounts.receiver.to_account_info(),acc,amount)?;
+    Ok(())
+}
 
 #[derive(Accounts)]
 pub struct InitializeMasterPda<'info> {
@@ -416,6 +424,7 @@ pub struct Cancel<'info> {
        constraint = data_account.receiver == receiver.key(),
        constraint = data_account.sender == sender.key(),
        constraint= data_account.fee_owner==fee_owner.key(),
+       close = data_account,
    )]
    pub data_account:  Account<'info, Stream>,
    #[account(
@@ -476,6 +485,15 @@ pub struct InstantTransfer<'info> {
     pub withdraw_data: Box<Account<'info, StreamedAmt>>, 
     pub system_program: Program<'info, System>,
 }
+#[derive(Accounts)]
+pub struct TransferDirect<'info> {
+    #[account(mut)]
+    pub sender: Signer<'info>,
+    /// CHECK:
+    #[account(mut)]
+    pub receiver: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+}
 #[account]
 pub struct Stream {
     pub start_time: u64,
@@ -494,15 +512,15 @@ pub struct Stream {
 }
 impl Stream {
     pub fn allowed_amt(&self, now: u64) -> u64 {
-        (
-        ((now - self.start_time) as f64) / ((self.end_time - self.start_time) as f64) * self.amount as f64
-        ) as u64 
+        ((((now - self.start_time) as u128) * self.amount as u128) / (self.end_time - self.start_time) as u128)
+        as u64
     }
 }
 #[account]
 pub struct StreamedAmt {
     pub amount: u64,
 }
+
 #[cfg(test)]
 mod tests {
    use super::*;
@@ -523,7 +541,6 @@ mod tests {
       withdraw.amount-=amount- withdrawn;  
       assert_eq!(withdraw.amount,0);
    }
-
    #[test]
    fn test_allowed_amount()
    {
@@ -535,8 +552,6 @@ mod tests {
 
        
    }
- 
-   
    fn example_stream()->Stream
    {
       
