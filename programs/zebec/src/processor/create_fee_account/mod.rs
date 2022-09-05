@@ -7,9 +7,9 @@ pub fn process_create_fee_account(
     ctx:Context<InitializeFeeVault>,
     fee_percentage:u64
 )->Result<()>{
-    let data_create = &mut ctx.accounts.vault_data;
-    data_create.owner=ctx.accounts.owner.key();
-    data_create.vault_address=ctx.accounts.fee_vault.key();
+    let data_create = &mut ctx.accounts.fee_vault_data;
+    data_create.fee_owner=ctx.accounts.fee_owner.key();
+    data_create.fee_vault_address=ctx.accounts.fee_vault.key();
     data_create.fee_percentage=fee_percentage; 
     Ok(())
 }
@@ -42,9 +42,9 @@ pub fn process_withdraw_fees_sol(
 pub struct InitializeFeeVault<'info> {
     #[account(
         init,
-        payer=owner,
+        payer=fee_owner,
         seeds = [
-            owner.key().as_ref(),
+            fee_owner.key().as_ref(),
             OPERATE.as_bytes(),           
         ],bump,
         space=0,
@@ -53,19 +53,20 @@ pub struct InitializeFeeVault<'info> {
     pub fee_vault:AccountInfo<'info>,
     #[account(
         init,
-        payer=owner,
+        payer=fee_owner,
         seeds = [
-            owner.key().as_ref(),
+            fee_owner.key().as_ref(),
             OPERATEDATA.as_bytes(),
             fee_vault.key().as_ref(),
         ],bump,
         space=8+32+32+8,
     )]
     /// CHECK: new account initialize, do not need to be validated
-    pub vault_data: Account<'info,Vault>,
+    pub fee_vault_data: Account<'info,FeeVaultData>,
     #[account(mut)]
-    pub owner: Signer<'info>,
+    pub fee_owner: Signer<'info>,
     pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
 #[derive(Accounts)]
 pub struct WithdrawFeesSol<'info> {
@@ -78,10 +79,10 @@ pub struct WithdrawFeesSol<'info> {
             fee_vault.key().as_ref(),
         ],bump
     )]
-    pub vault_data: Account<'info,Vault>,
+    pub fee_vault_data: Account<'info,FeeVaultData>,
     #[account(mut,
-        constraint = vault_data.owner == fee_owner.key(),
-        constraint = vault_data.vault_address == fee_vault.key(),
+        constraint = fee_vault_data.fee_owner == fee_owner.key(),
+        constraint = fee_vault_data.fee_vault_address == fee_vault.key(),
         seeds = [
             fee_owner.key().as_ref(),
             OPERATE.as_bytes(),           
@@ -103,10 +104,10 @@ pub struct WithdrawFeesToken<'info> {
             fee_vault.key().as_ref(),
         ],bump
     )]
-    pub vault_data: Account<'info,Vault>,
+    pub fee_vault_data: Account<'info,FeeVaultData>,
     #[account(mut,
-        constraint = vault_data.owner == fee_owner.key(),
-        constraint = vault_data.vault_address == fee_vault.key(),
+        constraint = fee_vault_data.fee_owner == fee_owner.key(),
+        constraint = fee_vault_data.fee_vault_address == fee_vault.key(),
         seeds = [
             fee_owner.key().as_ref(),
             OPERATE.as_bytes(),           
@@ -134,10 +135,10 @@ pub struct WithdrawFeesToken<'info> {
     fee_owner_token_account: Box<Account<'info, TokenAccount>>,
 }
 #[account]
-pub struct Vault
+pub struct FeeVaultData
 {
-    pub vault_address:Pubkey,
-    pub owner:Pubkey,
+    pub fee_vault_address:Pubkey,
+    pub fee_owner:Pubkey,
     pub fee_percentage:u64,
 } 
 
@@ -156,15 +157,15 @@ mod tests {
             OPERATE.as_bytes(),
         ],
         &program_id);
-        let vault_data = Vault
+        let vault_data = FeeVaultData
         {
-            owner:fee_owner,
-            vault_address:vault_address,
+            fee_owner:fee_owner,
+            fee_vault_address:vault_address,
             fee_percentage:fee_percentage,
         };
     
-        assert_eq!(vault_data.owner, fee_owner);
-        assert_eq!(vault_data.vault_address, vault_address);
+        assert_eq!(vault_data.fee_owner, fee_owner);
+        assert_eq!(vault_data.fee_vault_address, vault_address);
         assert_eq!(vault_data.fee_percentage,fee_percentage);
     }
 

@@ -43,8 +43,8 @@ describe("zebec token", () => {
     const tx = await zebecProgram.rpc.createFeeAccount(fee_percentage, {
       accounts: {
         feeVault: await feeVault(fee_receiver.publicKey),
-        vaultData: await create_fee_account(fee_receiver.publicKey),
-        owner: fee_receiver.publicKey,
+        feeVaultData: await create_fee_account(fee_receiver.publicKey),
+        feeOwner: fee_receiver.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       },
@@ -53,15 +53,15 @@ describe("zebec token", () => {
     });
     console.log("Your signature for create vault is ", tx);
 
-    const data_create_set = await zebecProgram.account.vault.fetch(
+    const data_create_set = await zebecProgram.account.feeVaultData.fetch(
       await create_fee_account(fee_receiver.publicKey)
     );
     assert.equal(
-      data_create_set.vaultAddress.toString(),
+      data_create_set.feeVaultAddress.toString(),
       (await feeVault(fee_receiver.publicKey)).toString()
     );
     assert.equal(
-      data_create_set.owner.toString(),
+      data_create_set.feeOwner.toString(),
       fee_receiver.publicKey.toString()
     );
     assert.equal(
@@ -128,8 +128,8 @@ describe("zebec token", () => {
             sender.publicKey,
             tokenMint.publicKey
           ),
-          feeOwner: fee_receiver.publicKey,
-          vaultData: await create_fee_account(fee_receiver.publicKey),
+        feeOwner: fee_receiver.publicKey,
+        feeVaultData: await create_fee_account(fee_receiver.publicKey),
           feeVault: await feeVault(fee_receiver.publicKey),
           sourceAccount: sender.publicKey,
           destAccount: receiver.publicKey,
@@ -256,8 +256,8 @@ describe("zebec token", () => {
       accounts: {
         destAccount: receiver.publicKey,
         sourceAccount: sender.publicKey,
-        feeOwner: fee_receiver.publicKey,
-        vaultData: await create_fee_account(fee_receiver.publicKey),
+      feeOwner: fee_receiver.publicKey,
+      feeVaultData: await create_fee_account(fee_receiver.publicKey),
         feeVault: await feeVault(fee_receiver.publicKey),
         zebecVault: await zebecVault(sender.publicKey),
         dataAccount: dataAccount.publicKey,
@@ -381,7 +381,7 @@ describe("zebec token", () => {
         destAccount: receiver.publicKey,
         sourceAccount: sender.publicKey,
         feeOwner: fee_receiver.publicKey,
-        vaultData: await create_fee_account(fee_receiver.publicKey),
+        feeVaultData: await create_fee_account(fee_receiver.publicKey),
         feeVault: await feeVault(fee_receiver.publicKey),
         zebecVault: await zebecVault(sender.publicKey),
         dataAccount: dataAccount.publicKey,
@@ -457,7 +457,7 @@ describe("zebec token", () => {
       ],
       zebecProgram.programId
     );
-    const fee_owner_token_account = await spl.getAssociatedTokenAddress(
+    const feeOwner_token_account = await spl.getAssociatedTokenAddress(
       tokenMint.publicKey,
       fee_receiver.publicKey,
       true,
@@ -474,7 +474,7 @@ describe("zebec token", () => {
     const tx = await zebecProgram.rpc.withdrawFeesToken({
       accounts: {
         feeOwner: fee_receiver.publicKey,
-        vaultData: create_fee_account,
+        feeVaultData: create_fee_account,
         feeVault: fee_vault,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: spl.TOKEN_PROGRAM_ID,
@@ -482,7 +482,7 @@ describe("zebec token", () => {
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         mint: tokenMint.publicKey,
         feeReceiverVaultTokenAccount: fee_vault_token_account,
-        feeOwnerTokenAccount: fee_owner_token_account,
+        feeOwnerTokenAccount: feeOwner_token_account,
       },
       signers: [fee_receiver],
       instructions: [],

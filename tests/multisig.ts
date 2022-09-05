@@ -77,8 +77,8 @@ describe("multisig", () => {
     const tx = await zebecProgram.rpc.createFeeAccount(fee_percentage, {
       accounts: {
         feeVault: await feeVault(fee_receiver.publicKey),
-        vaultData: await create_fee_account(fee_receiver.publicKey),
-        owner: fee_receiver.publicKey,
+        feeVaultData: await create_fee_account(fee_receiver.publicKey),
+        feeOwner: fee_receiver.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       },
@@ -650,7 +650,7 @@ describe("multisig", () => {
         dataAccount: dataAccount.publicKey,
         withdrawData: await withdrawData(PREFIX, multisigSigner),
         feeOwner: fee_receiver.publicKey,
-        vaultData: await create_fee_account(fee_receiver.publicKey),
+        feeVaultData: await create_fee_account(fee_receiver.publicKey),
         feeVault: await feeVault(fee_receiver.publicKey),
         systemProgram: anchor.web3.SystemProgram.programId,
       },
@@ -950,7 +950,7 @@ describe("multisig", () => {
     const tx = await zebecProgram.rpc.withdrawFeesSol({
       accounts: {
         feeOwner: fee_receiver.publicKey,
-        vaultData: await create_fee_account(fee_receiver.publicKey),
+        feeVaultData: await create_fee_account(fee_receiver.publicKey),
         feeVault: await feeVault(fee_receiver.publicKey),
         systemProgram: anchor.web3.SystemProgram.programId,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,

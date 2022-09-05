@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::{utils::{create_transfer,create_transfer_signed,check_overflow,},error::ErrorCode,constants::*,create_fee_account::Vault};
+use crate::{utils::{create_transfer,create_transfer_signed,check_overflow,},error::ErrorCode,constants::*,create_fee_account::FeeVaultData};
 pub fn process_deposit_sol(
     ctx: Context<InitializeMasterPda>,
     amount: u64
@@ -90,7 +90,7 @@ pub fn process_withdraw_stream(
     {
         return Err(ErrorCode::InsufficientFunds.into());
     }
-    let comission: u64 = ctx.accounts.vault_data.fee_percentage*allowed_amt/10000; 
+    let comission: u64 = ctx.accounts.fee_vault_data.fee_percentage*allowed_amt/10000; 
     let receiver_amount:u64=allowed_amt-comission;
     //receiver amount
     create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.receiver.to_account_info(),receiver_amount)?;
@@ -166,7 +166,7 @@ pub fn process_cancel_stream(
         return Err(ErrorCode::InsufficientFunds.into());
     }
     //commission is calculated
-    let comission: u64 = ctx.accounts.vault_data.fee_percentage*allowed_amt/10000;
+    let comission: u64 = ctx.accounts.fee_vault_data.fee_percentage*allowed_amt/10000;
     let receiver_amount:u64=allowed_amt-comission;
     //transfering allowable amount to the receiver
     //receiver amount
@@ -271,7 +271,7 @@ pub struct Initialize<'info> {
         ],bump,
         space=8+8,
     )]
-    pub withdraw_data: Box<Account<'info, StreamedAmt>>,
+    pub withdraw_data: Box<Account<'info, SolWithdaw>>,
     /// CHECK: validated in fee_vault constraint
     pub fee_owner:AccountInfo<'info>,
     #[account(
@@ -281,10 +281,10 @@ pub struct Initialize<'info> {
              fee_vault.key().as_ref(),
          ],bump
      )]
-    pub vault_data: Box<Account<'info,Vault>>,
+    pub fee_vault_data: Box<Account<'info,FeeVaultData>>,
     #[account(
-         constraint = vault_data.owner == fee_owner.key(),
-         constraint = vault_data.vault_address == fee_vault.key(),
+         constraint = fee_vault_data.fee_owner == fee_owner.key(),
+         constraint = fee_vault_data.fee_vault_address == fee_vault.key(),
          seeds = [
              fee_owner.key().as_ref(),
              OPERATE.as_bytes(),           
@@ -311,7 +311,7 @@ pub struct StreamUpdate<'info> {
             sender.key().as_ref(),
         ],bump,
     )]
-    pub withdraw_data: Box<Account<'info, StreamedAmt>>,
+    pub withdraw_data: Box<Account<'info, SolWithdaw>>,
     #[account(mut)]
     pub sender: Signer<'info>,
     /// CHECK: already checked in data account
@@ -345,7 +345,7 @@ pub struct Withdraw<'info> {
             sender.key().as_ref(),
         ],bump,
     )]
-    pub withdraw_data: Box<Account<'info, StreamedAmt>>,    
+    pub withdraw_data: Box<Account<'info, SolWithdaw>>,    
     /// CHECK: validated in fee_vault constraint
     pub fee_owner:AccountInfo<'info>,
     #[account(
@@ -355,12 +355,12 @@ pub struct Withdraw<'info> {
             fee_vault.key().as_ref(),
         ],bump
     )]
-    pub vault_data: Account<'info,Vault>,
+    pub fee_vault_data: Account<'info,FeeVaultData>,
 
     #[account(
         mut,
-        constraint = vault_data.owner == fee_owner.key(),
-        constraint = vault_data.vault_address == fee_vault.key(),
+        constraint = fee_vault_data.fee_owner == fee_owner.key(),
+        constraint = fee_vault_data.fee_vault_address == fee_vault.key(),
         seeds = [
             fee_owner.key().as_ref(),
             OPERATE.as_bytes(),           
@@ -391,7 +391,7 @@ pub struct InitializerWithdrawal<'info> {
         ],bump,
         space=8+8,
     )]
-    pub withdraw_data: Box<Account<'info, StreamedAmt>>,     
+    pub withdraw_data: Box<Account<'info, SolWithdaw>>,     
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
@@ -433,7 +433,7 @@ pub struct Cancel<'info> {
         sender.key().as_ref(),
     ],bump,
     )]
-    pub withdraw_data: Box<Account<'info, StreamedAmt>>,
+    pub withdraw_data: Box<Account<'info, SolWithdaw>>,
     /// CHECK: validated in fee_vault constraint
     pub fee_owner:AccountInfo<'info>,
     #[account(
@@ -443,10 +443,10 @@ pub struct Cancel<'info> {
            fee_vault.key().as_ref(),
        ],bump
     )]
-   pub vault_data: Account<'info,Vault>,
+   pub fee_vault_data: Account<'info,FeeVaultData>,
    #[account(mut,
-       constraint = vault_data.owner == fee_owner.key(),
-       constraint = vault_data.vault_address == fee_vault.key(),
+       constraint = fee_vault_data.fee_owner == fee_owner.key(),
+       constraint = fee_vault_data.fee_vault_address == fee_vault.key(),
        seeds = [
            fee_owner.key().as_ref(),
            OPERATE.as_bytes(),          
@@ -481,7 +481,7 @@ pub struct InstantTransfer<'info> {
         space=8+8,
     )]
     /// CHECK: seeds has been checked
-    pub withdraw_data: Box<Account<'info, StreamedAmt>>, 
+    pub withdraw_data: Box<Account<'info, SolWithdaw>>, 
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
@@ -516,7 +516,7 @@ impl Stream {
     }
 }
 #[account]
-pub struct StreamedAmt {
+pub struct SolWithdaw {
     pub amount: u64,
 }
 
@@ -571,9 +571,9 @@ mod tests {
  
        }
    }
-   fn example_withdraw_data()->StreamedAmt
+   fn example_withdraw_data()->SolWithdaw
    {
-    StreamedAmt{
+    SolWithdaw{
         amount:0,
     }
    }
