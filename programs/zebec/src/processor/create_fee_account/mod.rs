@@ -9,7 +9,7 @@ pub fn process_create_fee_account(
     fee_percentage:u64
 )->Result<()>{
     require!(
-        fee_percentage > 0 && fee_percentage <= 10000,
+        fee_percentage <= 10000,
         ErrorCode::OutOfBound
     );
     let data_create = &mut ctx.accounts.fee_vault_data;
