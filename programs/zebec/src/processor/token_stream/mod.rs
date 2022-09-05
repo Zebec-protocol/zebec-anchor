@@ -656,7 +656,8 @@ pub struct CancelTokenStream<'info> {
    #[account(mut,
            constraint= data_account.sender==source_account.key(),
            constraint= data_account.receiver==dest_account.key(),   
-           constraint= data_account.fee_owner==fee_owner.key(),          
+           constraint= data_account.fee_owner==fee_owner.key(),   
+           close = source_account //to close the data account and send rent exempt lamports to sender       
        )]
    pub data_account:  Account<'info, StreamToken>,
    #[account(
