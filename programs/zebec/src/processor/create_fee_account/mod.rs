@@ -1,15 +1,22 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token::{Mint, Token, TokenAccount,}};
-use crate::{utils::{create_transfer_signed,create_transfer_token_signed},constants::*};
+use crate::{utils::{create_transfer_signed,create_transfer_token_signed},constants::*,error::ErrorCode};
+
 
 // Creating fee account. This is used by developers for developing their own protocol on Top of zebec and if they want to take fees from transaction they can use this function to create and set fee account.
 pub fn process_create_fee_account(
     ctx:Context<InitializeFeeVault>,
     fee_percentage:u64
 )->Result<()>{
+    require!(
+        fee_percentage > 0 && fee_percentage <= 10000,
+        ErrorCode::OutOfBound
+    );
     let data_create = &mut ctx.accounts.fee_vault_data;
     data_create.fee_owner=ctx.accounts.fee_owner.key();
     data_create.fee_vault_address=ctx.accounts.fee_vault.key();
+    //for 0.25 % fee percentage should be sent 25
+    //which is divided by 10000 to get 0.25%
     data_create.fee_percentage=fee_percentage; 
     Ok(())
 }
@@ -38,6 +45,7 @@ pub fn process_withdraw_fees_sol(
     create_transfer_signed(ctx.accounts.fee_vault.to_account_info(),ctx.accounts.fee_owner.to_account_info(),ctx.accounts.fee_vault.lamports())?;
     Ok(())
 }
+
 #[derive(Accounts)]
 pub struct InitializeFeeVault<'info> {
     #[account(
