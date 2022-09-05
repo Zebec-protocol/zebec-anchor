@@ -22,9 +22,9 @@ pub fn process_token_stream(
     can_cancel:bool,
     can_update:bool,
 ) ->Result<()>{
-    check_overflow(start_time, end_time)?;
-    ctx.accounts.withdraw_data.amount+=amount;
+    let withdraw_state = &mut ctx.accounts.withdraw_data;
     let data_account =&mut ctx.accounts.data_account;
+    check_overflow(start_time, end_time)?;
     data_account.start_time = start_time;
     data_account.end_time = end_time;
     data_account.paused = 0;
@@ -39,6 +39,7 @@ pub fn process_token_stream(
     data_account.can_cancel=can_cancel;
     data_account.can_update=can_update;
     data_account.fee_owner= ctx.accounts.fee_owner.key();
+    withdraw_state.amount.checked_add(amount).ok_or(ErrorCode::NumericalOverflow)?;
     Ok(())
 }
 pub fn process_update_token_stream(
@@ -59,8 +60,8 @@ pub fn process_update_token_stream(
         return Err(ErrorCode::StreamAlreadyStarted.into());
     }
     let previous_amount = data_account.amount;
-    ctx.accounts.withdraw_data.amount-=previous_amount;
-    ctx.accounts.withdraw_data.amount+=amount;
+    ctx.accounts.withdraw_data.amount.checked_sub(previous_amount).ok_or(ErrorCode::NumericalOverflow)?;
+    ctx.accounts.withdraw_data.amount.checked_add(amount).ok_or(ErrorCode::NumericalOverflow)?;
     data_account.start_time = start_time;
     data_account.end_time = end_time;
     data_account.amount = amount;
@@ -74,7 +75,6 @@ pub fn process_withdraw_token_stream(
     let vault_token_account=&mut ctx.accounts.pda_account_token_account;
     let now = Clock::get()?.unix_timestamp as u64;
     if now <= data_account.start_time {
-        msg!("Stream has not been started");
         return Err(ErrorCode::StreamNotStarted.into());
     }
     //Calculated Amount
@@ -97,7 +97,7 @@ pub fn process_withdraw_token_stream(
         return Err(ErrorCode::InsufficientFunds.into());
     }
     let comission: u64 = ctx.accounts.fee_vault_data.fee_percentage*allowed_amt/10000; 
-    let receiver_amount:u64=allowed_amt-comission;
+    let receiver_amount:u64=allowed_amt.checked_sub(comission).ok_or(ErrorCode::NumericalOverflow)?;
     //vault signer seeds
     let bump = ctx.bumps.get("zebec_vault").unwrap().to_le_bytes();             
     let inner = vec![
@@ -121,8 +121,8 @@ pub fn process_withdraw_token_stream(
                                     comission)?;  
 
     data_account.withdrawn= data_account.withdrawn.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
-    
-    if (data_account.withdrawn+data_account.paused_amt) >= data_account.amount { 
+    let total_transfered = data_account.withdrawn+data_account.paused_amt;
+    if total_transfered >= data_account.amount { 
         create_transfer_signed(data_account.to_account_info(),ctx.accounts.source_account.to_account_info(), data_account.to_account_info().lamports())?;
     } 
     withdraw_state.amount-=allowed_amt;      
@@ -141,10 +141,11 @@ pub fn process_pause_resume_token_stream(
         return Err(ErrorCode::StreamNotStarted.into());
     }
 
-    if data_account.paused ==1{            
-        let amount_paused_at=data_account.allowed_amt(data_account.paused_at);
-        let allowed_amt_now = data_account.allowed_amt(now);
-        data_account.paused_amt +=allowed_amt_now-amount_paused_at;
+    if data_account.paused ==1{  
+        let amount_paused_at=data_account.allowed_amt(data_account.paused_at);          
+        let mut allowed_amt_now = data_account.allowed_amt(now);
+        allowed_amt_now.checked_sub(amount_paused_at).ok_or(ErrorCode::NumericalOverflow)?;
+        data_account.paused_amt.checked_add(allowed_amt_now).ok_or(ErrorCode::NumericalOverflow)?;
         data_account.paused = 0;
         data_account.paused_at = 0;
     }
@@ -190,7 +191,7 @@ pub fn process_cancel_token_stream(
     }
     //commission is calculated
     let comission: u64 = ctx.accounts.fee_vault_data.fee_percentage*allowed_amt/10000; 
-    let receiver_amount:u64=allowed_amt-comission;
+    let receiver_amount:u64=allowed_amt.checked_sub(comission).ok_or(ErrorCode::NumericalOverflow)?;
     //vault signer seeds
     let bump = ctx.bumps.get("zebec_vault").unwrap().to_le_bytes();     
     let inner = vec![
@@ -214,8 +215,9 @@ pub fn process_cancel_token_stream(
                                     outer,
                                     comission)?;  
     //changing withdraw state
-    withdraw_state.amount-=data_account.amount-data_account.withdrawn;
-    //data account gets closed after the end     
+    withdraw_state.amount.checked_add(data_account.withdrawn).ok_or(ErrorCode::NumericalOverflow)?;
+    withdraw_state.amount.checked_sub(data_account.amount).ok_or(ErrorCode::NumericalOverflow)?;
+      //data account gets closed after the end     
     Ok(())
 }
 pub fn process_token_withdrawal(
@@ -250,7 +252,8 @@ pub fn process_token_withdrawal(
     else
     {
      //Check remaining amount after withdrawal
-    let allowed_amt = vault_token_account.amount - amount;
+    let mut vault_tokens:u64=vault_token_account.amount;
+    let allowed_amt = vault_tokens.checked_sub(amount).ok_or(ErrorCode::NumericalOverflow)?;
      //if remaining amount is lesser then the required amount for stream stop making withdrawal 
     if allowed_amt < withdraw_state.amount {
         return Err(ErrorCode::StreamedAmt.into()); 
@@ -297,8 +300,9 @@ pub fn process_instant_token_transfer(
     else
     {
      //Check remaining amount after withdrawal
-    let allowed_amt = vault_token_account.amount - amount;
-     //if remaining amount is lesser then the required amount for stream stop making withdrawal 
+     let mut vault_tokens:u64=vault_token_account.amount;
+     let allowed_amt = vault_tokens.checked_sub(amount).ok_or(ErrorCode::NumericalOverflow)?;
+        //if remaining amount is lesser then the required amount for stream stop making withdrawal 
     if allowed_amt < withdraw_state.amount {
         return Err(ErrorCode::StreamedAmt.into()); 
     }

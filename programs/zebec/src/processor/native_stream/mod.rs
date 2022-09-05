@@ -31,8 +31,7 @@ pub fn process_native_stream(
     data_account.paused_amt=0;
     data_account.can_cancel=can_cancel;
     data_account.can_update=can_update;
-    withdraw_state.amount+=amount;
-
+    withdraw_state.amount.checked_add(amount).ok_or(ErrorCode::NumericalOverflow)?;
     Ok(())
 }
 pub fn process_update_native_stream(
@@ -53,8 +52,8 @@ pub fn process_update_native_stream(
         return Err(ErrorCode::StreamAlreadyStarted.into());
     }
     let previous_amount = data_account.amount;
-    ctx.accounts.withdraw_data.amount-=previous_amount;
-    ctx.accounts.withdraw_data.amount+=amount;
+    ctx.accounts.withdraw_data.amount.checked_sub(previous_amount).ok_or(ErrorCode::NumericalOverflow)?;
+    ctx.accounts.withdraw_data.amount.checked_add(amount).ok_or(ErrorCode::NumericalOverflow)?;
     data_account.start_time = start_time;
     data_account.end_time = end_time;
     data_account.amount = amount;
@@ -91,13 +90,14 @@ pub fn process_withdraw_stream(
         return Err(ErrorCode::InsufficientFunds.into());
     }
     let comission: u64 = ctx.accounts.fee_vault_data.fee_percentage*allowed_amt/10000; 
-    let receiver_amount:u64=allowed_amt-comission;
+    let receiver_amount:u64=allowed_amt.checked_sub(comission).ok_or(ErrorCode::NumericalOverflow)?;
     //receiver amount
     create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.receiver.to_account_info(),receiver_amount)?;
     //commission
     create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.fee_vault.to_account_info(),comission)?;
     data_account.withdrawn= data_account.withdrawn.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
-    if (data_account.withdrawn+data_account.paused_amt) >= data_account.amount 
+    let total_transfered = data_account.withdrawn.checked_add(data_account.paused_amt).ok_or(ErrorCode::NumericalOverflow)?;
+    if total_transfered >= data_account.amount 
     {
        create_transfer_signed(data_account.to_account_info(),ctx.accounts.sender.to_account_info(),data_account.to_account_info().lamports())?;
     }
@@ -119,8 +119,9 @@ pub fn process_pause_stream(
 
     if data_account.paused ==1{            
         let amount_paused_at=data_account.allowed_amt(data_account.paused_at);
-        let allowed_amt_now = data_account.allowed_amt(now);
-        data_account.paused_amt +=allowed_amt_now-amount_paused_at;
+        let mut allowed_amt_now = data_account.allowed_amt(now);
+        allowed_amt_now.checked_sub(amount_paused_at).ok_or(ErrorCode::NumericalOverflow)?;
+        data_account.paused_amt.checked_add(allowed_amt_now).ok_or(ErrorCode::NumericalOverflow)?;
         data_account.paused = 0;
         data_account.paused_at = 0;
     }
@@ -167,14 +168,15 @@ pub fn process_cancel_stream(
     }
     //commission is calculated
     let comission: u64 = ctx.accounts.fee_vault_data.fee_percentage*allowed_amt/10000;
-    let receiver_amount:u64=allowed_amt-comission;
+    let receiver_amount:u64=allowed_amt.checked_sub(comission).ok_or(ErrorCode::NumericalOverflow)?;
     //transfering allowable amount to the receiver
     //receiver amount
     create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.receiver.to_account_info(),receiver_amount)?;
     //commission
     create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.fee_vault.to_account_info(),comission)?;
     //changing withdraw state
-    withdraw_state.amount-=data_account.amount-data_account.withdrawn;
+    withdraw_state.amount.checked_add(data_account.withdrawn).ok_or(ErrorCode::NumericalOverflow)?;
+    withdraw_state.amount.checked_sub(data_account.amount).ok_or(ErrorCode::NumericalOverflow)?;
     //closing the data account to end the stream
     Ok(())
 } 
@@ -197,7 +199,8 @@ pub fn process_native_transfer(
     else
     {
     //Check remaining amount after transfer
-    let allowed_amt = zebec_vault.lamports() - amount;
+    let mut vault_lamports:u64=zebec_vault.lamports();
+    let allowed_amt = vault_lamports.checked_sub(amount).ok_or(ErrorCode::NumericalOverflow)?;
     //if remaining amount is lesser then the required amount for stream stop making withdrawal 
     if allowed_amt < withdraw_state.amount {
         return Err(ErrorCode::StreamedAmt.into()); 
@@ -225,7 +228,8 @@ pub fn process_native_withdrawal(
     else
     {
     //Check remaining amount after withdrawal
-    let allowed_amt = zebec_vault.lamports() - amount;
+    let mut vault_lamports:u64=zebec_vault.lamports();
+    let allowed_amt = vault_lamports.checked_sub(amount).ok_or(ErrorCode::NumericalOverflow)?;
     //if remaining amount is lesser then the required amount for stream stop making withdrawal 
     if allowed_amt < withdraw_state.amount {
         return Err(ErrorCode::StreamedAmt.into()); 
