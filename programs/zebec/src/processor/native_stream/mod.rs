@@ -96,12 +96,12 @@ pub fn process_withdraw_stream(
     //commission
     create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.fee_vault.to_account_info(),comission)?;
     data_account.withdrawn= data_account.withdrawn.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
-    let total_transfered = data_account.withdrawn.checked_add(data_account.paused_amt).ok_or(ErrorCode::NumericalOverflow)?;
+    let total_transfered = data_account.withdrawn+data_account.paused_amt;
     if total_transfered >= data_account.amount 
     {
        create_transfer_signed(data_account.to_account_info(),ctx.accounts.sender.to_account_info(),data_account.to_account_info().lamports())?;
     }
-    withdraw_state.amount-=allowed_amt;
+    withdraw_state.amount.checked_sub(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
     Ok(())
 }
 pub fn process_pause_stream(

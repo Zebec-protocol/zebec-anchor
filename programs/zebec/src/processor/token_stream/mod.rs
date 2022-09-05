@@ -125,7 +125,7 @@ pub fn process_withdraw_token_stream(
     if total_transfered >= data_account.amount { 
         create_transfer_signed(data_account.to_account_info(),ctx.accounts.source_account.to_account_info(), data_account.to_account_info().lamports())?;
     } 
-    withdraw_state.amount-=allowed_amt;      
+    withdraw_state.amount.checked_sub(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;;      
     Ok(())
 }
 pub fn process_pause_resume_token_stream(
