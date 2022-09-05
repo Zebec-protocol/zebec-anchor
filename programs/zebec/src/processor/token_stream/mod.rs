@@ -121,7 +121,8 @@ pub fn process_withdraw_token_stream(
                                     comission)?;  
 
     data_account.withdrawn= data_account.withdrawn.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
-    if data_account.withdrawn == data_account.amount { 
+    
+    if (data_account.withdrawn+data_account.paused_amt) >= data_account.amount { 
         create_transfer_signed(data_account.to_account_info(),ctx.accounts.source_account.to_account_info(), data_account.to_account_info().lamports())?;
     } 
     withdraw_state.amount-=allowed_amt;      
