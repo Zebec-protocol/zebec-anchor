@@ -6,7 +6,7 @@ import {
   zebecVault,
   withdrawData,
 } from "./src/Accounts";
-import { airdropSol, getClusterTime, solFromProvider } from "./src/utils";
+import { getClusterTime, solFromProvider } from "./src/utils";
 import { PREFIX, STREAM_SIZE, zebecProgram } from "./src/Constants";
 import { bytes } from "@project-serum/anchor/dist/cjs/utils";
 // Configure the client to use the local cluster.
