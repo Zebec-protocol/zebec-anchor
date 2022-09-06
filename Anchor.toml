@@ -1,8 +1,9 @@
 [programs.devnet] 
-zebec = "Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia" 
+zebec = "DMFbM74dfiii1eHdutvjUFwuP8zdMrycGRfrMwKCtB5w" 
+serum_multisig = "b6ZPysThkApNx2YDiGsPUiYPE7Ub1kTRdCWp7gBkzbr" 
 
 [programs.localnet] 
-zebec = "Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia" 
+zebec = "DMFbM74dfiii1eHdutvjUFwuP8zdMrycGRfrMwKCtB5w" 
 serum_multisig = "b6ZPysThkApNx2YDiGsPUiYPE7Ub1kTRdCWp7gBkzbr" 
 
   
