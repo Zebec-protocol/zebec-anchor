@@ -39,7 +39,7 @@ pub fn process_token_stream(
     data_account.can_cancel=can_cancel;
     data_account.can_update=can_update;
     data_account.fee_owner= ctx.accounts.fee_owner.key();
-    withdraw_state.amount.checked_add(amount).ok_or(ErrorCode::NumericalOverflow)?;
+    withdraw_state.amount=withdraw_state.amount.checked_add(amount).ok_or(ErrorCode::NumericalOverflow)?;
     Ok(())
 }
 pub fn process_update_token_stream(
@@ -60,8 +60,8 @@ pub fn process_update_token_stream(
         return Err(ErrorCode::StreamAlreadyStarted.into());
     }
     let previous_amount = data_account.amount;
-    ctx.accounts.withdraw_data.amount.checked_sub(previous_amount).ok_or(ErrorCode::NumericalOverflow)?;
-    ctx.accounts.withdraw_data.amount.checked_add(amount).ok_or(ErrorCode::NumericalOverflow)?;
+    ctx.accounts.withdraw_data.amount=ctx.accounts.withdraw_data.amount.checked_sub(previous_amount).ok_or(ErrorCode::NumericalOverflow)?;
+    ctx.accounts.withdraw_data.amount=ctx.accounts.withdraw_data.amount.checked_add(amount).ok_or(ErrorCode::NumericalOverflow)?;
     data_account.start_time = start_time;
     data_account.end_time = end_time;
     data_account.amount = amount;
@@ -125,7 +125,7 @@ pub fn process_withdraw_token_stream(
     if total_transfered >= data_account.amount { 
         create_transfer_signed(data_account.to_account_info(),ctx.accounts.source_account.to_account_info(), data_account.to_account_info().lamports())?;
     } 
-    withdraw_state.amount.checked_sub(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;;      
+    withdraw_state.amount=withdraw_state.amount.checked_sub(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;     
     Ok(())
 }
 pub fn process_pause_resume_token_stream(
@@ -144,8 +144,8 @@ pub fn process_pause_resume_token_stream(
     if data_account.paused ==1{  
         let amount_paused_at=data_account.allowed_amt(data_account.paused_at);          
         let mut allowed_amt_now = data_account.allowed_amt(now);
-        allowed_amt_now.checked_sub(amount_paused_at).ok_or(ErrorCode::NumericalOverflow)?;
-        data_account.paused_amt.checked_add(allowed_amt_now).ok_or(ErrorCode::NumericalOverflow)?;
+        allowed_amt_now = allowed_amt_now.checked_sub(amount_paused_at).ok_or(ErrorCode::NumericalOverflow)?;
+        data_account.paused_amt=data_account.paused_amt.checked_add(allowed_amt_now).ok_or(ErrorCode::NumericalOverflow)?;
         data_account.paused = 0;
         data_account.paused_at = 0;
     }
@@ -215,8 +215,8 @@ pub fn process_cancel_token_stream(
                                     outer,
                                     comission)?;  
     //changing withdraw state
-    withdraw_state.amount.checked_add(data_account.withdrawn).ok_or(ErrorCode::NumericalOverflow)?;
-    withdraw_state.amount.checked_sub(data_account.amount).ok_or(ErrorCode::NumericalOverflow)?;
+    withdraw_state.amount=withdraw_state.amount.checked_add(data_account.withdrawn).ok_or(ErrorCode::NumericalOverflow)?;
+    withdraw_state.amount=withdraw_state.amount.checked_sub(data_account.amount).ok_or(ErrorCode::NumericalOverflow)?;
       //data account gets closed after the end     
     Ok(())
 }
@@ -252,7 +252,7 @@ pub fn process_token_withdrawal(
     else
     {
      //Check remaining amount after withdrawal
-    let mut vault_tokens:u64=vault_token_account.amount;
+    let vault_tokens:u64=vault_token_account.amount;
     let allowed_amt = vault_tokens.checked_sub(amount).ok_or(ErrorCode::NumericalOverflow)?;
      //if remaining amount is lesser then the required amount for stream stop making withdrawal 
     if allowed_amt < withdraw_state.amount {
@@ -300,7 +300,7 @@ pub fn process_instant_token_transfer(
     else
     {
      //Check remaining amount after withdrawal
-     let mut vault_tokens:u64=vault_token_account.amount;
+     let vault_tokens:u64=vault_token_account.amount;
      let allowed_amt = vault_tokens.checked_sub(amount).ok_or(ErrorCode::NumericalOverflow)?;
         //if remaining amount is lesser then the required amount for stream stop making withdrawal 
     if allowed_amt < withdraw_state.amount {

@@ -105,6 +105,13 @@ describe("zebec native", () => {
       receiver.publicKey.toString()
     );
     assert.equal(data_account.paused.toString(), "0");
+
+   
+    const withdraw_info = await zebecProgram.account.solWithdaw.fetch(
+      await withdrawData(PREFIX, sender.publicKey)
+    );
+    console.log("The streamed amount is %s",withdraw_info.amount.toString());
+    assert.equal(withdraw_info.amount.toString(), amount.toString());
   });
   it("Update Stream", async () => {
     let now = await getClusterTime(provider.connection);
