@@ -858,7 +858,7 @@ describe("multisig", () => {
     });
     console.log("Cancel Stream SOl Transaction  executed", exeTxn);
   });
-  it("Withdraw Deposited Native Token from multisig", async () => {
+  it("Withdraw Deposited Native Token from multisig zebec vault", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
       [multisig.publicKey.toBuffer()],
       multisigProgram.programId
