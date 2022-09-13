@@ -108,7 +108,7 @@ const createUserAndAssociatedWallet = async (
   return userAssociatedTokenAccount;
 };
 describe("multisig Token", () => {
-  it("Tests the multisig program", async () => {
+  it("Tests the create Multisig program", async () => {
     const num_owner = owners.length + 1;
     const multisigSize = 8 + 4 + 32 * num_owner + 8 + 1 + 4;
     const threshold = new anchor.BN(2);
@@ -154,8 +154,8 @@ describe("multisig Token", () => {
     });
     console.log("Your signature is ", tx);
   });
-  it("Send token directly", async () => {
-    const [multisigSigner, nonce] =
+  it("Send token directly from Multisig", async () => {
+    const [multisigSigner, _nonce] =
       await anchor.web3.PublicKey.findProgramAddress(
         [multisig.publicKey.toBuffer()],
         multisigProgram.programId
@@ -278,7 +278,7 @@ describe("multisig Token", () => {
     });
     console.log("Send Token Directly executed ",exeTx);
   });
-  it("Deposit token", async () => {
+  it("Deposit token from Multisig to Multisig's Zebec Vault", async () => {
     const [multisigSigner, nonce] =
       await anchor.web3.PublicKey.findProgramAddress(
         [multisig.publicKey.toBuffer()],
@@ -404,7 +404,7 @@ describe("multisig Token", () => {
         }),
     });
   });
-  it("Creating token stream from multisig", async () => {
+  it("Creating token stream from Multisig", async () => {
     const [multisigSigner, nonce] =
       await anchor.web3.PublicKey.findProgramAddress(
         [multisig.publicKey.toBuffer()],
@@ -547,7 +547,7 @@ describe("multisig Token", () => {
       exeTxn
     );
   });
-  it("Updating token stream from multisig", async () => {
+  it("Updating token stream from Multisig", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
       [multisig.publicKey.toBuffer()],
       multisigProgram.programId
@@ -650,7 +650,7 @@ describe("multisig Token", () => {
       exeTxn
     );
   });
-  it("Pause token stream from multisig", async () => {
+  it("Pause token stream from Multisig", async () => {
     const [multisigSigner, nonce] =
       await anchor.web3.PublicKey.findProgramAddress(
         [multisig.publicKey.toBuffer()],
@@ -732,7 +732,7 @@ describe("multisig Token", () => {
     });
     console.log("Multisig Stream Token Transaction executed", exeTxn);
   });
-  it("Resume token stream from multisig", async () => {
+  it("Resume token stream from Multisig", async () => {
     const [multisigSigner, nonce] =
       await anchor.web3.PublicKey.findProgramAddress(
         [multisig.publicKey.toBuffer()],
@@ -814,7 +814,7 @@ describe("multisig Token", () => {
     });
     console.log("Resume Stream Token Transaction executed", exeTxn);
   });
-  it("Withdraw Token Stream", async () => {
+  it("Withdraw Token Stream for receiver", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
       [multisig.publicKey.toBuffer()],
       multisigProgram.programId
@@ -888,7 +888,7 @@ describe("multisig Token", () => {
       assert.equal(withdrawn_amount.toString(), withdraw_amt.toString());
     }
   });
-  it("Cancel token stream from multisig", async () => {
+  it("Cancel token stream from Multisig", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
       [multisig.publicKey.toBuffer()],
       multisigProgram.programId
@@ -1058,7 +1058,7 @@ describe("multisig Token", () => {
     });
     console.log("Cancel Stream Token Transaction executed", exeTxn);
   });
-  it("Instant Transfer from multisig", async () => {
+  it("Instant Transfer from Multisig", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
       [multisig.publicKey.toBuffer()],
       multisigProgram.programId
@@ -1199,7 +1199,7 @@ describe("multisig Token", () => {
     });
     console.log("Instant Token Transfer Transaction executed", exeTxn);
   });
-  it("Withdraw Deposited Token from multisig", async () => {
+  it("Withdraw Deposited Token from Multisig's Zebec Vault", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
       [multisig.publicKey.toBuffer()],
       multisigProgram.programId

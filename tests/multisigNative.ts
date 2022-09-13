@@ -40,7 +40,7 @@ console.log("Receiver key: " + receiver.publicKey.toBase58());
 console.log("Pda key: " + dataAccount.publicKey.toBase58());
 
 describe("multisig", () => {
-  it("Tests the multisig program", async () => {
+  it("Tests the create Multisig program", async () => {
     const num_owner = owners.length + 1;
     const multisigSize = 8 + 8 + 32 * num_owner + 8 + 1 + 4;
     const threshold = new anchor.BN(2);
@@ -87,7 +87,7 @@ describe("multisig", () => {
     });
     console.log("Your signature is ", tx);
   });
-  it("Deposit Sol", async () => {
+  it("Deposit Sol from Multisig to Zebec vault of Multisig", async () => {
     // multisigSigner is sender, all the transaction will be signed from multisigSigner account
     const [multisigSigner, nonce] =
       await anchor.web3.PublicKey.findProgramAddress(
@@ -170,7 +170,7 @@ describe("multisig", () => {
         }),
     });
   });
-  it("Send Sol directly from multisig", async () => {
+  it("Send Sol directly from Multisig", async () => {
     // multisigSigner is sender, all the transaction will be signed from multisigSigner account
     const [multisigSigner, nonce] =
       await anchor.web3.PublicKey.findProgramAddress(
@@ -257,7 +257,7 @@ describe("multisig", () => {
       executeTx
     );
   });  
-  it("Creating stream from multisig", async () => {
+  it("Creating stream from Multisig", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
       [multisig.publicKey.toBuffer()],
       multisigProgram.programId
@@ -379,7 +379,7 @@ describe("multisig", () => {
     });
     console.log("Multisig Stream SOl Transaction executed", exeTxn);
   });
-  it("Updating stream from multisig", async () => {
+  it("Updating stream from Multisig", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
       [multisig.publicKey.toBuffer()],
       multisigProgram.programId
@@ -477,7 +477,7 @@ describe("multisig", () => {
     });
     console.log("Multisig Update  Stream SOl Transaction  executed", exeTxn);
   });
-  it("Pause stream from multisig", async () => {
+  it("Pause stream from Multisig", async () => {
     const [multisigSigner, nonce] =
       await anchor.web3.PublicKey.findProgramAddress(
         [multisig.publicKey.toBuffer()],
@@ -557,7 +557,7 @@ describe("multisig", () => {
     });
     console.log("Multisig Stream SOl Transaction executed", exeTxn);
   });
-  it("Resume stream from multisig", async () => {
+  it("Resume stream from Multisig", async () => {
     const [multisigSigner, nonce] =
       await anchor.web3.PublicKey.findProgramAddress(
         [multisig.publicKey.toBuffer()],
@@ -637,7 +637,7 @@ describe("multisig", () => {
     });
     console.log("Resume Stream SOl Transaction executed", exeTxn);
   });
-  it("Withdraw Sol", async () => {
+  it("Withdraw Sol for Receiver", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
       [multisig.publicKey.toBuffer()],
       multisigProgram.programId
@@ -658,7 +658,7 @@ describe("multisig", () => {
     });
     console.log("Your transaction signature", tx);
   });
-  it("Cancel stream from multisig", async () => {
+  it("Cancel stream from Multisig", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
       [multisig.publicKey.toBuffer()],
       multisigProgram.programId
@@ -765,7 +765,7 @@ describe("multisig", () => {
     });
     console.log("Cancel Stream SOl Transaction  executed", exeTxn);
   });
-  it("Intsant Native Transfer from multisig", async () => {
+  it("Intsant Native Transfer from Multisig's zebec vault", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
       [multisig.publicKey.toBuffer()],
       multisigProgram.programId
@@ -858,7 +858,7 @@ describe("multisig", () => {
     });
     console.log("Cancel Stream SOl Transaction  executed", exeTxn);
   });
-  it("Withdraw Deposited Native Token from multisig", async () => {
+  it("Withdraw Deposited Native Token from Multisig's zebec vault", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
       [multisig.publicKey.toBuffer()],
       multisigProgram.programId
