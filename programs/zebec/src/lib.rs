@@ -29,6 +29,12 @@ mod zebec {
     )->Result<()>{
         process_withdraw_fees_sol(ctx)
     }
+    pub fn update_fees(
+        ctx: Context<UpdateFees>,
+        fee_percentage:u64,
+    )->Result<()>{
+        process_update_fee(ctx, fee_percentage)
+    }
     pub fn deposit_sol(
         ctx: Context<InitializeMasterPda>,
         amount: u64
