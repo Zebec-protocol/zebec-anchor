@@ -1,5 +1,6 @@
 //Zebec Anchor Program - https://docs.zebec.io/
 use anchor_lang::prelude::*;
+use solana_security_txt::security_txt;
 declare_id!("Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia");
 
 pub mod utils;
@@ -145,3 +146,13 @@ mod zebec {
     }
 }
 
+security_txt! {
+    name: "Zebec-V2",
+    project_url: "https://zebec.io/",
+    contacts: "email:security@zebec.io,samundra@zebec.io",
+    policy: "https://docs.zebec.io/",
+    preferred_languages: "en",
+    source_code: "https://github.com/Zebec-protocol/zebec-anchor",
+    auditors: "Trail of Bits, Inc (Anders Helsing and Troy Sargent)",
+    acknowledgements: ""
+}
