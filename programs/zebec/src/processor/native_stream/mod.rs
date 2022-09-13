@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::{utils::{create_transfer,create_transfer_signed,check_overflow,},error::ErrorCode,constants::*,create_fee_account::Vault};
+use crate::{utils::{create_transfer,create_transfer_signed,check_overflow,},error::ErrorCode,constants::*,create_fee_account::FeeVaultData};
 pub fn process_deposit_sol(
     ctx: Context<InitializeMasterPda>,
     amount: u64
@@ -35,7 +35,7 @@ pub fn process_native_stream(
 
     Ok(())
 }
-pub fn  process_update_native_stream(
+pub fn process_update_native_stream(
     ctx: Context<StreamUpdate>,
     start_time: u64,
     end_time: u64,
@@ -90,15 +90,16 @@ pub fn process_withdraw_stream(
     {
         return Err(ErrorCode::InsufficientFunds.into());
     }
-    let comission: u64 = ctx.accounts.vault_data.fee_percentage*allowed_amt/10000; 
+    let comission: u64 = ctx.accounts.fee_vault_data.fee_percentage*allowed_amt/10000; 
     let receiver_amount:u64=allowed_amt-comission;
     //receiver amount
     create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.receiver.to_account_info(),receiver_amount)?;
     //commission
     create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.fee_vault.to_account_info(),comission)?;
     data_account.withdrawn= data_account.withdrawn.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
-    if data_account.withdrawn == data_account.amount { 
-        create_transfer_signed(data_account.to_account_info(),ctx.accounts.sender.to_account_info(), data_account.to_account_info().lamports())?;
+    if (data_account.withdrawn+data_account.paused_amt) >= data_account.amount 
+    {
+       create_transfer_signed(data_account.to_account_info(),ctx.accounts.sender.to_account_info(),data_account.to_account_info().lamports())?;
     }
     withdraw_state.amount-=allowed_amt;
     Ok(())
@@ -165,7 +166,7 @@ pub fn process_cancel_stream(
         return Err(ErrorCode::InsufficientFunds.into());
     }
     //commission is calculated
-    let comission: u64 = ctx.accounts.vault_data.fee_percentage*allowed_amt/10000;
+    let comission: u64 = ctx.accounts.fee_vault_data.fee_percentage*allowed_amt/10000;
     let receiver_amount:u64=allowed_amt-comission;
     //transfering allowable amount to the receiver
     //receiver amount
@@ -175,7 +176,6 @@ pub fn process_cancel_stream(
     //changing withdraw state
     withdraw_state.amount-=data_account.amount-data_account.withdrawn;
     //closing the data account to end the stream
-    create_transfer_signed(data_account.to_account_info(),ctx.accounts.sender.to_account_info(), data_account.to_account_info().lamports())?;       
     Ok(())
 } 
 pub fn process_native_transfer(
@@ -234,7 +234,14 @@ pub fn process_native_withdrawal(
     }
     Ok(())
 }
-
+pub fn process_sol_directly(
+    ctx:Context<TransferDirect>,
+    amount:u64,
+) ->Result<()>{
+    let acc = ctx.accounts.system_program.to_account_info();  
+    create_transfer(ctx.accounts.sender.to_account_info(),ctx.accounts.receiver.to_account_info(),acc,amount)?;
+    Ok(())
+}
 #[derive(Accounts)]
 pub struct InitializeMasterPda<'info> {
     #[account(    
@@ -264,7 +271,7 @@ pub struct Initialize<'info> {
         ],bump,
         space=8+8,
     )]
-    pub withdraw_data: Box<Account<'info, StreamedAmt>>,
+    pub withdraw_data: Box<Account<'info, SolWithdaw>>,
     /// CHECK: validated in fee_vault constraint
     pub fee_owner:AccountInfo<'info>,
     #[account(
@@ -274,10 +281,10 @@ pub struct Initialize<'info> {
              fee_vault.key().as_ref(),
          ],bump
      )]
-    pub vault_data: Box<Account<'info,Vault>>,
+    pub fee_vault_data: Box<Account<'info,FeeVaultData>>,
     #[account(
-         constraint = vault_data.owner == fee_owner.key(),
-         constraint = vault_data.vault_address == fee_vault.key(),
+         constraint = fee_vault_data.fee_owner == fee_owner.key(),
+         constraint = fee_vault_data.fee_vault_address == fee_vault.key(),
          seeds = [
              fee_owner.key().as_ref(),
              OPERATE.as_bytes(),           
@@ -304,7 +311,7 @@ pub struct StreamUpdate<'info> {
             sender.key().as_ref(),
         ],bump,
     )]
-    pub withdraw_data: Box<Account<'info, StreamedAmt>>,
+    pub withdraw_data: Box<Account<'info, SolWithdaw>>,
     #[account(mut)]
     pub sender: Signer<'info>,
     /// CHECK: already checked in data account
@@ -338,7 +345,7 @@ pub struct Withdraw<'info> {
             sender.key().as_ref(),
         ],bump,
     )]
-    pub withdraw_data: Box<Account<'info, StreamedAmt>>,    
+    pub withdraw_data: Box<Account<'info, SolWithdaw>>,    
     /// CHECK: validated in fee_vault constraint
     pub fee_owner:AccountInfo<'info>,
     #[account(
@@ -348,12 +355,12 @@ pub struct Withdraw<'info> {
             fee_vault.key().as_ref(),
         ],bump
     )]
-    pub vault_data: Account<'info,Vault>,
+    pub fee_vault_data: Account<'info,FeeVaultData>,
 
     #[account(
         mut,
-        constraint = vault_data.owner == fee_owner.key(),
-        constraint = vault_data.vault_address == fee_vault.key(),
+        constraint = fee_vault_data.fee_owner == fee_owner.key(),
+        constraint = fee_vault_data.fee_vault_address == fee_vault.key(),
         seeds = [
             fee_owner.key().as_ref(),
             OPERATE.as_bytes(),           
@@ -384,7 +391,7 @@ pub struct InitializerWithdrawal<'info> {
         ],bump,
         space=8+8,
     )]
-    pub withdraw_data: Box<Account<'info, StreamedAmt>>,     
+    pub withdraw_data: Box<Account<'info, SolWithdaw>>,     
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
@@ -416,6 +423,7 @@ pub struct Cancel<'info> {
        constraint = data_account.receiver == receiver.key(),
        constraint = data_account.sender == sender.key(),
        constraint= data_account.fee_owner==fee_owner.key(),
+       close = sender,//to close the data account and send rent exempt lamports to sender
    )]
    pub data_account:  Account<'info, Stream>,
    #[account(
@@ -425,7 +433,7 @@ pub struct Cancel<'info> {
         sender.key().as_ref(),
     ],bump,
     )]
-    pub withdraw_data: Box<Account<'info, StreamedAmt>>,
+    pub withdraw_data: Box<Account<'info, SolWithdaw>>,
     /// CHECK: validated in fee_vault constraint
     pub fee_owner:AccountInfo<'info>,
     #[account(
@@ -435,10 +443,10 @@ pub struct Cancel<'info> {
            fee_vault.key().as_ref(),
        ],bump
     )]
-   pub vault_data: Account<'info,Vault>,
+   pub fee_vault_data: Account<'info,FeeVaultData>,
    #[account(mut,
-       constraint = vault_data.owner == fee_owner.key(),
-       constraint = vault_data.vault_address == fee_vault.key(),
+       constraint = fee_vault_data.fee_owner == fee_owner.key(),
+       constraint = fee_vault_data.fee_vault_address == fee_vault.key(),
        seeds = [
            fee_owner.key().as_ref(),
            OPERATE.as_bytes(),          
@@ -473,7 +481,16 @@ pub struct InstantTransfer<'info> {
         space=8+8,
     )]
     /// CHECK: seeds has been checked
-    pub withdraw_data: Box<Account<'info, StreamedAmt>>, 
+    pub withdraw_data: Box<Account<'info, SolWithdaw>>, 
+    pub system_program: Program<'info, System>,
+}
+#[derive(Accounts)]
+pub struct TransferDirect<'info> {
+    #[account(mut)]
+    pub sender: Signer<'info>,
+    /// CHECK:
+    #[account(mut)]
+    pub receiver: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
 #[account]
@@ -494,15 +511,15 @@ pub struct Stream {
 }
 impl Stream {
     pub fn allowed_amt(&self, now: u64) -> u64 {
-        (
-        ((now - self.start_time) as f64) / ((self.end_time - self.start_time) as f64) * self.amount as f64
-        ) as u64 
+        ((((now - self.start_time) as u128) * self.amount as u128) / (self.end_time - self.start_time) as u128)
+        as u64
     }
 }
 #[account]
-pub struct StreamedAmt {
+pub struct SolWithdaw {
     pub amount: u64,
 }
+
 #[cfg(test)]
 mod tests {
    use super::*;
@@ -523,7 +540,6 @@ mod tests {
       withdraw.amount-=amount- withdrawn;  
       assert_eq!(withdraw.amount,0);
    }
-
    #[test]
    fn test_allowed_amount()
    {
@@ -535,8 +551,6 @@ mod tests {
 
        
    }
- 
-   
    fn example_stream()->Stream
    {
       
@@ -557,9 +571,9 @@ mod tests {
  
        }
    }
-   fn example_withdraw_data()->StreamedAmt
+   fn example_withdraw_data()->SolWithdaw
    {
-    StreamedAmt{
+    SolWithdaw{
         amount:0,
     }
    }

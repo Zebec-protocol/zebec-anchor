@@ -48,4 +48,6 @@ pub enum ErrorCode {
     StreamAlreadyStarted,
     #[msg("UpdateNotAllowed")]
     UpdateNotAllowed,
+    #[msg("OutOfBound")]
+    OutOfBound,
 }

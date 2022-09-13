@@ -4,7 +4,7 @@ import * as anchor from "@project-serum/anchor";
 const provider = anchor.Provider.env();
 anchor.setProvider(provider);
 const programId = new anchor.web3.PublicKey(
-  "Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia"
+  "DMFbM74dfiii1eHdutvjUFwuP8zdMrycGRfrMwKCtB5w"
 );
 const multisigProgramId = new anchor.web3.PublicKey(
   "b6ZPysThkApNx2YDiGsPUiYPE7Ub1kTRdCWp7gBkzbr"

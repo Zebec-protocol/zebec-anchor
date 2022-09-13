@@ -1,11 +1,11 @@
 use anchor_lang::prelude::*;
-use crate::{utils::{create_transfer_signed,create_transfer_token_signed,create_transfer_token,check_overflow,},error::ErrorCode,constants::*,create_fee_account::Vault};
+use crate::{utils::{create_transfer_signed,create_transfer_token_signed,create_transfer_token,check_overflow,},error::ErrorCode,constants::*,create_fee_account::FeeVaultData};
 use anchor_spl::{associated_token::AssociatedToken, token::{Mint, Token, TokenAccount,}};
 
 pub fn process_deposit_token(
     ctx: Context<TokenDeposit>,
     amount: u64,
-)   ->Result<()>{
+)  ->Result<()>{
     create_transfer_token(
     ctx.accounts.token_program.to_account_info(), 
     ctx.accounts.source_account_token_account.to_account_info(),
@@ -96,7 +96,7 @@ pub fn process_withdraw_token_stream(
     {
         return Err(ErrorCode::InsufficientFunds.into());
     }
-    let comission: u64 = ctx.accounts.vault_data.fee_percentage*allowed_amt/10000; 
+    let comission: u64 = ctx.accounts.fee_vault_data.fee_percentage*allowed_amt/10000; 
     let receiver_amount:u64=allowed_amt-comission;
     //vault signer seeds
     let bump = ctx.bumps.get("zebec_vault").unwrap().to_le_bytes();             
@@ -121,7 +121,8 @@ pub fn process_withdraw_token_stream(
                                     comission)?;  
 
     data_account.withdrawn= data_account.withdrawn.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
-    if data_account.withdrawn == data_account.amount { 
+    
+    if (data_account.withdrawn+data_account.paused_amt) >= data_account.amount { 
         create_transfer_signed(data_account.to_account_info(),ctx.accounts.source_account.to_account_info(), data_account.to_account_info().lamports())?;
     } 
     withdraw_state.amount-=allowed_amt;      
@@ -156,7 +157,7 @@ pub fn process_pause_resume_token_stream(
 }
 pub fn process_cancel_token_stream(
     ctx: Context<CancelTokenStream>,
-)   ->Result<()>{
+) ->Result<()>{
     let data_account =&mut ctx.accounts.data_account;
     let withdraw_state = &mut ctx.accounts.withdraw_data;
     let vault_token_account=&mut ctx.accounts.pda_account_token_account;
@@ -188,7 +189,7 @@ pub fn process_cancel_token_stream(
         return Err(ErrorCode::InsufficientFunds.into());
     }
     //commission is calculated
-    let comission: u64 = ctx.accounts.vault_data.fee_percentage*allowed_amt/10000; 
+    let comission: u64 = ctx.accounts.fee_vault_data.fee_percentage*allowed_amt/10000; 
     let receiver_amount:u64=allowed_amt-comission;
     //vault signer seeds
     let bump = ctx.bumps.get("zebec_vault").unwrap().to_le_bytes();     
@@ -212,17 +213,15 @@ pub fn process_cancel_token_stream(
                                     ctx.accounts.zebec_vault.to_account_info(),
                                     outer,
                                     comission)?;  
-            //changing withdraw state
+    //changing withdraw state
     withdraw_state.amount-=data_account.amount-data_account.withdrawn;
-     //closing the data account to end the stream
-    create_transfer_signed(data_account.to_account_info(),ctx.accounts.source_account.to_account_info(), data_account.to_account_info().lamports())?; 
-
+    //data account gets closed after the end     
     Ok(())
 }
 pub fn process_token_withdrawal(
     ctx: Context<InitializerTokenWithdrawal>,
     amount: u64,
-) -> Result<()>{
+) ->Result<()>{
     let withdraw_state = &mut ctx.accounts.withdraw_data;
     let vault_token_account=&mut ctx.accounts.pda_account_token_account;
     
@@ -269,7 +268,7 @@ pub fn process_token_withdrawal(
 pub fn process_instant_token_transfer(
     ctx: Context<TokenInstantTransfer>,
     amount: u64,
-) -> Result<()>{
+) ->Result<()>{
     let withdraw_state = &mut ctx.accounts.withdraw_data;
     let vault_token_account=&mut ctx.accounts.pda_account_token_account;
     
@@ -313,6 +312,18 @@ pub fn process_instant_token_transfer(
     }
     Ok(())
 }
+pub fn process_send_token_directly(
+    ctx:Context<TokenDirectTransfer>,
+    amount:u64,
+) ->Result<()>{
+    create_transfer_token(
+        ctx.accounts.token_program.to_account_info(), 
+        ctx.accounts.source_account_token_account.to_account_info(),
+        ctx.accounts.dest_token_account.to_account_info(),
+        ctx.accounts.source_account.to_account_info(), 
+        amount)?;
+      Ok(())
+}
 #[derive(Accounts)]
 pub struct TokenStream<'info> {
     #[account(zero)]
@@ -337,10 +348,10 @@ pub struct TokenStream<'info> {
             fee_vault.key().as_ref(),
         ],bump
     )]
-    pub vault_data: Account<'info,Vault>,
+    pub fee_vault_data: Account<'info,FeeVaultData>,
     #[account(
-        constraint = vault_data.owner == fee_owner.key(),
-        constraint = vault_data.vault_address == fee_vault.key(),
+        constraint = fee_vault_data.fee_owner == fee_owner.key(),
+        constraint = fee_vault_data.fee_vault_address == fee_vault.key(),
         seeds = [
             fee_owner.key().as_ref(),
             OPERATE.as_bytes(),           
@@ -475,10 +486,10 @@ pub struct TokenWithdrawStream<'info> {
             fee_vault.key().as_ref(),
         ],bump
     )]
-    pub vault_data: Account<'info,Vault>,
+    pub fee_vault_data: Account<'info,FeeVaultData>,
     #[account(
-        constraint = vault_data.owner == fee_owner.key(),
-        constraint = vault_data.vault_address == fee_vault.key(),
+        constraint = fee_vault_data.fee_owner == fee_owner.key(),
+        constraint = fee_vault_data.fee_vault_address == fee_vault.key(),
         seeds = [
             fee_owner.key().as_ref(),
             OPERATE.as_bytes(),           
@@ -572,6 +583,32 @@ pub struct TokenInstantTransfer<'info> {
     dest_token_account: Box<Account<'info, TokenAccount>>,
 }
 #[derive(Accounts)]
+pub struct TokenDirectTransfer<'info> {
+    #[account(mut)]
+    pub source_account: Signer<'info>,
+    /// CHECK: This is the receiver account, since the funds are transferred directly, we do not need to check it
+    #[account(mut)]
+    pub dest_account: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+    pub token_program:Program<'info,Token>,
+    pub associated_token_program:Program<'info,AssociatedToken>,
+    pub rent: Sysvar<'info, Rent>,
+    pub mint:Account<'info,Mint>,
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = source_account,
+    )]
+    source_account_token_account: Box<Account<'info, TokenAccount>>,
+    #[account(
+        init_if_needed,
+        payer = source_account,
+        associated_token::mint = mint,
+        associated_token::authority = dest_account,
+    )]
+    dest_token_account: Box<Account<'info, TokenAccount>>,
+}
+#[derive(Accounts)]
 pub struct PauseTokenStream<'info> {
     #[account(mut)]
     pub sender: Signer<'info>,
@@ -606,10 +643,10 @@ pub struct CancelTokenStream<'info> {
            fee_vault.key().as_ref(),
        ],bump
    )]
-   pub vault_data: Account<'info,Vault>, 
+   pub fee_vault_data: Account<'info,FeeVaultData>, 
    #[account(
-       constraint = vault_data.owner == fee_owner.key(),
-       constraint = vault_data.vault_address == fee_vault.key(),
+       constraint = fee_vault_data.fee_owner == fee_owner.key(),
+       constraint = fee_vault_data.fee_vault_address == fee_vault.key(),
        seeds = [
            fee_owner.key().as_ref(),
            OPERATE.as_bytes(),          
@@ -620,7 +657,8 @@ pub struct CancelTokenStream<'info> {
    #[account(mut,
            constraint= data_account.sender==source_account.key(),
            constraint= data_account.receiver==dest_account.key(),   
-           constraint= data_account.fee_owner==fee_owner.key(),          
+           constraint= data_account.fee_owner==fee_owner.key(),   
+           close = source_account //to close the data account and send rent exempt lamports to sender       
        )]
    pub data_account:  Account<'info, StreamToken>,
    #[account(
@@ -678,9 +716,8 @@ pub struct StreamToken {
 }
 impl StreamToken {
     pub fn allowed_amt(&self, now: u64) -> u64 {
-        (
-        ((now - self.start_time) as f64) / ((self.end_time - self.start_time) as f64) * self.amount as f64
-        ) as u64 
+        ((((now - self.start_time) as u128) * self.amount as u128) / (self.end_time - self.start_time) as u128)
+        as u64
     }
 }
 #[account]

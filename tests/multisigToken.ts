@@ -39,6 +39,7 @@ const tokenMint = new anchor.web3.Keypair();
 //users account
 const sender = anchor.web3.Keypair.generate();
 const receiver = anchor.web3.Keypair.generate();
+const receiver_direct = anchor.web3.Keypair.generate();
 const fee_receiver = new anchor.web3.Keypair();
 
 //constant strings
@@ -136,14 +137,15 @@ describe("multisig Token", () => {
     await solFromProvider(provider,ownerA.publicKey,2);
     await solFromProvider(provider,fee_receiver.publicKey,0.1);
     await solFromProvider(provider,multisigSigner,2);
+    await solFromProvider(provider,receiver.publicKey,1);
   });
   it("Create Set Vault", async () => {
     const fee_percentage = new anchor.BN(25);
     const tx = await zebecProgram.rpc.createFeeAccount(fee_percentage, {
       accounts: {
         feeVault: await feeVault(fee_receiver.publicKey),
-        vaultData: await create_fee_account(fee_receiver.publicKey),
-        owner: fee_receiver.publicKey,
+        feeVaultData: await create_fee_account(fee_receiver.publicKey),
+        feeOwner: fee_receiver.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       },
@@ -152,7 +154,7 @@ describe("multisig Token", () => {
     });
     console.log("Your signature is ", tx);
   });
-  it("Deposit token", async () => {
+  it("Send token directly", async () => {
     const [multisigSigner, nonce] =
       await anchor.web3.PublicKey.findProgramAddress(
         [multisig.publicKey.toBuffer()],
@@ -162,6 +164,132 @@ describe("multisig Token", () => {
     const source_token_account = await createUserAndAssociatedWallet(
       multisigProgram.provider.connection,
       tokenMint.publicKey
+    );
+    const receiver_token_account = await spl.getAssociatedTokenAddress(
+      tokenMint.publicKey,
+      receiver_direct.publicKey,
+      true,
+      spl.TOKEN_PROGRAM_ID,
+      spl.ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    const accounts = [
+      {
+        pubkey: multisigSigner,
+        isWritable: true,
+        isSigner: true,
+      },
+      {
+        pubkey: receiver_direct.publicKey,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: anchor.web3.SystemProgram.programId,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: spl.TOKEN_PROGRAM_ID,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: anchor.web3.SYSVAR_RENT_PUBKEY,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: tokenMint.publicKey,
+        isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: source_token_account,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: receiver_token_account,
+        isWritable: true,
+        isSigner: false,
+      }];
+    const transaction = anchor.web3.Keypair.generate();
+    const data = zebecProgram.coder.instruction.encode("sendTokenDirectly", {
+      amount: new anchor.BN(1000),
+    });
+    const txSize = getTxSize(accounts, owners, false, 8);
+    const tx = await multisigProgram.rpc.createTransaction(
+      pid,
+      accounts,
+      data,
+      {
+        accounts: {
+          multisig: multisig.publicKey,
+          transaction: transaction.publicKey,
+          proposer: ownerA.publicKey,
+        },
+        instructions: [
+          await multisigProgram.account.transaction.createInstruction(
+            transaction,
+            txSize
+          ),
+        ],
+        signers: [transaction, ownerA],
+      }
+    );
+    console.log("Multisig Send token Transaction created by ownerA", tx);
+
+    const approveTx = await multisigProgram.rpc.approve({
+      accounts: {
+        multisig: multisig.publicKey,
+        transaction: transaction.publicKey,
+        owner: ownerB.publicKey,
+      },
+      signers: [ownerB],
+    });
+    console.log(
+      "Multisig Send Token Transaction Approved by ownerB",
+      approveTx
+    );
+
+    const exeTx=await multisigProgram.rpc.executeTransaction({
+      accounts: {
+        multisig: multisig.publicKey,
+        multisigSigner,
+        transaction: transaction.publicKey,
+      },
+      remainingAccounts: accounts
+        .map((t: any) => {
+          if (t.pubkey.equals(multisigSigner)) {
+            return { ...t, isSigner: false };
+          }
+          return t;
+        })
+        .concat({
+          pubkey: zebecProgram.programId,
+          isWritable: false,
+          isSigner: false,
+        }),
+    });
+    console.log("Send Token Directly executed ",exeTx);
+  });
+  it("Deposit token", async () => {
+    const [multisigSigner, nonce] =
+      await anchor.web3.PublicKey.findProgramAddress(
+        [multisig.publicKey.toBuffer()],
+        multisigProgram.programId
+      );
+    const source_token_account = await spl.getAssociatedTokenAddress(
+      tokenMint.publicKey,
+      multisigSigner,
+      true,
+      spl.TOKEN_PROGRAM_ID,
+      spl.ASSOCIATED_TOKEN_PROGRAM_ID
     );
     const pda_token_account = await spl.getAssociatedTokenAddress(
       tokenMint.publicKey,
@@ -718,7 +846,7 @@ describe("multisig Token", () => {
         destAccount: receiver.publicKey,
         sourceAccount: multisigSigner,
         feeOwner: fee_receiver.publicKey,
-        vaultData: await create_fee_account(fee_receiver.publicKey),
+        feeVaultData: await create_fee_account(fee_receiver.publicKey),
         feeVault: await feeVault(fee_receiver.publicKey),
         zebecVault: await zebecVault(multisigSigner),
         dataAccount: dataAccount.publicKey,
@@ -1239,7 +1367,7 @@ describe("multisig Token", () => {
     const tx = await zebecProgram.rpc.withdrawFeesToken({
       accounts: {
         feeOwner: fee_receiver.publicKey,
-        vaultData: create_fee_account,
+        feeVaultData: create_fee_account,
         feeVault: fee_vault,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: spl.TOKEN_PROGRAM_ID,

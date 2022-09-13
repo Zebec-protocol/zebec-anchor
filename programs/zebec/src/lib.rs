@@ -1,6 +1,6 @@
-// Zebec Anchor Program - https://docs.zebec.io/
+//Zebec Anchor Program - https://docs.zebec.io/
 use anchor_lang::prelude::*;
-declare_id!("Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia");
+declare_id!("DMFbM74dfiii1eHdutvjUFwuP8zdMrycGRfrMwKCtB5w");
 
 pub mod utils;
 pub mod error;
@@ -79,6 +79,13 @@ mod zebec {
     ) ->Result<()>{
         process_native_withdrawal(ctx,amount)
     }
+    pub fn send_sol_directly(
+        ctx:Context<TransferDirect>,
+        amount:u64,
+    ) -> Result<()>{
+        process_sol_directly(ctx, amount)
+    }
+        
     pub fn deposit_token(
         ctx: Context<TokenDeposit>,
         amount: u64,
@@ -129,6 +136,12 @@ mod zebec {
         amount: u64,
     ) -> Result<()>{
         process_token_withdrawal(ctx,amount)
+    }
+    pub fn send_token_directly(
+        ctx:Context<TokenDirectTransfer>,
+        amount:u64,
+    ) -> Result<()>{
+        process_send_token_directly(ctx, amount)
     }
 }
 
