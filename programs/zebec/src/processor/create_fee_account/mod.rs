@@ -166,6 +166,7 @@ pub struct UpdateFees<'info> {
     /// CHECK: seeds has been checked
     pub fee_vault:AccountInfo<'info>,
     #[account(
+        mut,
         seeds = [
             fee_owner.key().as_ref(),
             OPERATEDATA.as_bytes(),

@@ -69,6 +69,28 @@ describe("zebec token", () => {
       fee_percentage.toString()
     );
   });
+  it("Update Fee Percentage", async () => {
+    const fee_percentage = new anchor.BN(20);
+    const tx = await zebecProgram.rpc.updateFees(fee_percentage, {
+      accounts: {
+        feeVault: await feeVault(fee_receiver.publicKey),
+        feeVaultData: await create_fee_account(fee_receiver.publicKey),
+        feeOwner: fee_receiver.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+      signers: [fee_receiver],
+      instructions: [],
+    });
+    console.log("Your transaction signature is ", tx);
+    const data_create_set = await zebecProgram.account.feeVaultData.fetch(
+      await create_fee_account(fee_receiver.publicKey)
+    );
+    assert.equal(
+      data_create_set.feePercentage.toString(),
+      fee_percentage.toString()
+    );
+  });
   it("Token Deposit", async () => {
     await createMint(provider, tokenMint);
     const source_token_account = await createUserAndAssociatedWallet(
