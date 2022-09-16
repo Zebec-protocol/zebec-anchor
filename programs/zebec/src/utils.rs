@@ -91,3 +91,8 @@ pub fn check_overflow(start_time: u64, end_time: u64) -> Result<()> {
     }
     Ok(())
 }
+pub fn calculate_comission(fee_percentage:u64,allowed_amt:u64) -> Result<u64>{
+    let mult:u64=fee_percentage.checked_mul(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
+    let comission:u64=mult.checked_div(10000).ok_or(ErrorCode::NumericalOverflow)?;
+    Ok(comission)
+}

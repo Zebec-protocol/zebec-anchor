@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::{utils::{create_transfer,create_transfer_signed,check_overflow,},error::ErrorCode,constants::*,create_fee_account::FeeVaultData};
+use crate::{utils::{create_transfer,create_transfer_signed,check_overflow,calculate_comission},error::ErrorCode,constants::*,create_fee_account::FeeVaultData};
 pub fn process_deposit_sol(
     ctx: Context<InitializeMasterPda>,
     amount: u64
@@ -91,7 +91,7 @@ pub fn process_withdraw_stream(
     {
         return Err(ErrorCode::InsufficientFunds.into());
     }
-    let comission: u64 = data_account.fee_percentage*allowed_amt/10000; 
+    let comission: u64 = calculate_comission(data_account.fee_percentage,allowed_amt)?;
     let receiver_amount:u64=allowed_amt.checked_sub(comission).ok_or(ErrorCode::NumericalOverflow)?;
     //receiver amount
     create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.receiver.to_account_info(),receiver_amount)?;
@@ -163,13 +163,12 @@ pub fn process_cancel_stream(
     if now < data_account.start_time {
         allowed_amt = 0;
     }
-
     if allowed_amt > zebec_vault.lamports()
     {
         return Err(ErrorCode::InsufficientFunds.into());
     }
     //commission is calculated
-    let comission: u64 = data_account.fee_percentage*allowed_amt/10000; 
+    let comission: u64 = calculate_comission(data_account.fee_percentage,allowed_amt)?;
     let receiver_amount:u64=allowed_amt.checked_sub(comission).ok_or(ErrorCode::NumericalOverflow)?;
     //transfering allowable amount to the receiver
     //receiver amount

@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::{utils::{create_transfer_signed,create_transfer_token_signed,create_transfer_token,check_overflow,},error::ErrorCode,constants::*,create_fee_account::FeeVaultData};
+use crate::{utils::{create_transfer_signed,create_transfer_token_signed,create_transfer_token,check_overflow,calculate_comission},error::ErrorCode,constants::*,create_fee_account::FeeVaultData};
 use anchor_spl::{associated_token::AssociatedToken, token::{Mint, Token, TokenAccount,}};
 
 pub fn process_deposit_token(
@@ -98,7 +98,7 @@ pub fn process_withdraw_token_stream(
     {
         return Err(ErrorCode::InsufficientFunds.into());
     }
-    let comission: u64 = data_account.fee_percentage*allowed_amt/10000; 
+    let comission: u64 = calculate_comission(data_account.fee_percentage,allowed_amt)?;
     let receiver_amount:u64=allowed_amt.checked_sub(comission).ok_or(ErrorCode::NumericalOverflow)?;
     //vault signer seeds
     let bump = ctx.bumps.get("zebec_vault").unwrap().to_le_bytes();             
@@ -192,7 +192,7 @@ pub fn process_cancel_token_stream(
         return Err(ErrorCode::InsufficientFunds.into());
     }
     //commission is calculated
-    let comission: u64 = data_account.fee_percentage*allowed_amt/10000; 
+    let comission: u64 = calculate_comission(data_account.fee_percentage,allowed_amt)?;
     let receiver_amount:u64=allowed_amt.checked_sub(comission).ok_or(ErrorCode::NumericalOverflow)?;
     //vault signer seeds
     let bump = ctx.bumps.get("zebec_vault").unwrap().to_le_bytes();     
