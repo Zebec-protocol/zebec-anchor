@@ -153,12 +153,13 @@ mod zebec {
 }
 
 security_txt! {
-    name: "Zebec-V2",
+    name: "Zebec Protocol",
     project_url: "https://zebec.io/",
-    contacts: "email:security@zebec.io,samundra@zebec.io",
+    contacts: "email:security@zebec.io",
     policy: "https://docs.zebec.io/",
     preferred_languages: "en",
     source_code: "https://github.com/Zebec-protocol/zebec-anchor",
     auditors: "Trail of Bits, Inc (Anders Helsing and Troy Sargent)",
-    acknowledgements: ""
+    acknowledgements: "This program is elgible for bug bounty program, we appreciate any contributions that enhances security.
+                        -Zebec"
 }

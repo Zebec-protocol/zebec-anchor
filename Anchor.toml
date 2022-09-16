@@ -4,15 +4,18 @@ zebec = "Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia"
 [programs.localnet] 
 zebec = "Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia" 
 serum_multisig = "b6ZPysThkApNx2YDiGsPUiYPE7Ub1kTRdCWp7gBkzbr" 
+[programs.mainnet] 
+zebec = "Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia" 
 
   
 [registry] 
 url = "https://anchor.projectserum.com" 
 
-  
+[workspace]
+members = ["programs/zebec"]  
 
 [provider] 
-cluster = "localnet" 
+cluster = "mainnet" 
 wallet = "~/.config/solana/id.json" 
 
   

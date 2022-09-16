@@ -571,8 +571,7 @@ mod tests {
            fee_owner:Pubkey::default(),
            paused_amt:0,
            can_cancel:true,
-           can_update:true,
- 
+           can_update:true, 
        }
    }
    fn example_withdraw_data()->SolWithdaw
