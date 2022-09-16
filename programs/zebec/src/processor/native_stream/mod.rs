@@ -18,6 +18,7 @@ pub fn process_native_stream(
 ) -> Result<()> {
     let data_account = &mut ctx.accounts.data_account;
     let withdraw_state = &mut ctx.accounts.withdraw_data;
+    let fee_percentage = ctx.accounts.fee_vault_data.fee_percentage;
     check_overflow(start_time, end_time)?;
     data_account.start_time = start_time;
     data_account.end_time = end_time;
@@ -27,6 +28,7 @@ pub fn process_native_stream(
     data_account.sender = ctx.accounts.sender.key();
     data_account.receiver = ctx.accounts.receiver.key();
     data_account.fee_owner=ctx.accounts.fee_owner.key();
+    data_account.fee_percentage=fee_percentage;
     data_account.paused_at=0;
     data_account.paused_amt=0;
     data_account.can_cancel=can_cancel;
@@ -89,7 +91,7 @@ pub fn process_withdraw_stream(
     {
         return Err(ErrorCode::InsufficientFunds.into());
     }
-    let comission: u64 = ctx.accounts.fee_vault_data.fee_percentage*allowed_amt/10000; 
+    let comission: u64 = data_account.fee_percentage*allowed_amt/10000; 
     let receiver_amount:u64=allowed_amt.checked_sub(comission).ok_or(ErrorCode::NumericalOverflow)?;
     //receiver amount
     create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.receiver.to_account_info(),receiver_amount)?;
@@ -167,7 +169,7 @@ pub fn process_cancel_stream(
         return Err(ErrorCode::InsufficientFunds.into());
     }
     //commission is calculated
-    let comission: u64 = ctx.accounts.fee_vault_data.fee_percentage*allowed_amt/10000;
+    let comission: u64 = data_account.fee_percentage*allowed_amt/10000; 
     let receiver_amount:u64=allowed_amt.checked_sub(comission).ok_or(ErrorCode::NumericalOverflow)?;
     //transfering allowable amount to the receiver
     //receiver amount
@@ -509,6 +511,7 @@ pub struct Stream {
     pub withdrawn: u64,
     pub paused_at: u64,
     pub fee_owner:Pubkey,
+    pub fee_percentage:u64,
     pub paused_amt:u64,
     pub can_cancel:bool,
     pub can_update:bool,
@@ -569,6 +572,7 @@ mod tests {
            withdrawn: 0,
            paused_at: 0,
            fee_owner:Pubkey::default(),
+           fee_percentage:25,
            paused_amt:0,
            can_cancel:true,
            can_update:true, 

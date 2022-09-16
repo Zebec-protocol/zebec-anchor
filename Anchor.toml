@@ -11,11 +11,8 @@ zebec = "Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia"
 [registry] 
 url = "https://anchor.projectserum.com" 
 
-[workspace]
-members = ["programs/zebec"]  
-
 [provider] 
-cluster = "mainnet" 
+cluster = "localnet" 
 wallet = "~/.config/solana/id.json" 
 
   

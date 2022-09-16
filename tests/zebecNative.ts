@@ -44,28 +44,6 @@ describe("zebec native", () => {
     });
     console.log("Your transaction signature is ", tx);
   });
-  it("Update Fee Percentage", async () => {
-    const fee_percentage = new anchor.BN(20);
-    const tx = await zebecProgram.rpc.updateFees(fee_percentage, {
-      accounts: {
-        feeVault: await feeVault(fee_receiver.publicKey),
-        feeVaultData: await create_fee_account(fee_receiver.publicKey),
-        feeOwner: fee_receiver.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-      },
-      signers: [fee_receiver],
-      instructions: [],
-    });
-    console.log("Your transaction signature is ", tx);
-    const data_create_set = await zebecProgram.account.feeVaultData.fetch(
-      await create_fee_account(fee_receiver.publicKey)
-    );
-    assert.equal(
-      data_create_set.feePercentage.toString(),
-      fee_percentage.toString()
-    );
-  });
   it("Deposit Sol", async () => {
     const amount = new anchor.BN(anchor.web3.LAMPORTS_PER_SOL);
     const tx = await zebecProgram.rpc.depositSol(amount, {
@@ -134,6 +112,41 @@ describe("zebec native", () => {
     );
     console.log("The streamed amount is %s",withdraw_info.amount.toString());
     assert.equal(withdraw_info.amount.toString(), amount.toString());
+    const data_create_set = await zebecProgram.account.feeVaultData.fetch(
+      await create_fee_account(fee_receiver.publicKey)
+    );
+    assert.equal(data_account.feePercentage.toString(),data_create_set.feePercentage.toString());
+  });
+  it("Update Fee Percentage", async () => {
+    const fee_percentage = new anchor.BN(20);
+    const tx = await zebecProgram.rpc.updateFees(fee_percentage, {
+      accounts: {
+        feeVault: await feeVault(fee_receiver.publicKey),
+        feeVaultData: await create_fee_account(fee_receiver.publicKey),
+        feeOwner: fee_receiver.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+      signers: [fee_receiver],
+      instructions: [],
+    });
+    console.log("Your transaction signature is ", tx);
+    const data_create_set = await zebecProgram.account.feeVaultData.fetch(
+      await create_fee_account(fee_receiver.publicKey)
+    );
+    assert.equal(
+      data_create_set.feePercentage.toString(),
+      fee_percentage.toString()
+    );
+  });
+  it("Verify Fee Percentage unchanged in Stream", async () => {
+    const data_create_set = await zebecProgram.account.feeVaultData.fetch(
+      await create_fee_account(fee_receiver.publicKey)
+    );
+    const data_account = await zebecProgram.account.stream.fetch(
+      dataAccount.publicKey
+    );
+    assert.notEqual(data_account.feePercentage.toString(),data_create_set.feePercentage.toString());
   });
   it("Update Stream", async () => {
     let now = await getClusterTime(provider.connection);
