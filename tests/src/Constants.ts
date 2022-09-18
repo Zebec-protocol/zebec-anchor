@@ -4,7 +4,7 @@ import * as anchor from "@project-serum/anchor";
 const provider = anchor.Provider.env();
 anchor.setProvider(provider);
 const programId = new anchor.web3.PublicKey(
-  "Gvg5iMmgu8zs4rn5zJ6YGGnzsu6WqZJawKUndbqneXia"
+  "zbcKGdAmXfthXY3rEPBzexVByT2cqRqCZb9NwWdGQ2T"
 );
 const multisigProgramId = new anchor.web3.PublicKey(
   "b6ZPysThkApNx2YDiGsPUiYPE7Ub1kTRdCWp7gBkzbr"
@@ -20,7 +20,6 @@ export const multisigProgram = new anchor.Program(
   multisigIdl,
   multisigProgramId
 );
-
 export const PREFIX = "withdraw_sol";
 export const OPERATE = "NewVaultOption";
 export const OPERATEDATA = "NewVaultOptionData";
