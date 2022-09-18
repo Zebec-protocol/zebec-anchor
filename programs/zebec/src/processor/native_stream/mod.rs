@@ -276,7 +276,7 @@ pub struct Initialize<'info> {
         ],bump,
         space=8+8,
     )]
-    pub withdraw_data: Box<Account<'info, SolWithdaw>>,
+    pub withdraw_data: Box<Account<'info, SolWithdraw>>,
     /// CHECK: validated in fee_vault constraint
     pub fee_owner:AccountInfo<'info>,
     #[account(
@@ -316,7 +316,7 @@ pub struct StreamUpdate<'info> {
             sender.key().as_ref(),
         ],bump,
     )]
-    pub withdraw_data: Box<Account<'info, SolWithdaw>>,
+    pub withdraw_data: Box<Account<'info, SolWithdraw>>,
     #[account(mut)]
     pub sender: Signer<'info>,
     /// CHECK: already checked in data account
@@ -350,7 +350,7 @@ pub struct Withdraw<'info> {
             sender.key().as_ref(),
         ],bump,
     )]
-    pub withdraw_data: Box<Account<'info, SolWithdaw>>,    
+    pub withdraw_data: Box<Account<'info, SolWithdraw>>,    
     /// CHECK: validated in fee_vault constraint
     pub fee_owner:AccountInfo<'info>,
     #[account(
@@ -396,7 +396,7 @@ pub struct InitializerWithdrawal<'info> {
         ],bump,
         space=8+8,
     )]
-    pub withdraw_data: Box<Account<'info, SolWithdaw>>,     
+    pub withdraw_data: Box<Account<'info, SolWithdraw>>,     
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
@@ -438,7 +438,7 @@ pub struct Cancel<'info> {
         sender.key().as_ref(),
     ],bump,
     )]
-    pub withdraw_data: Box<Account<'info, SolWithdaw>>,
+    pub withdraw_data: Box<Account<'info, SolWithdraw>>,
     /// CHECK: validated in fee_vault constraint
     pub fee_owner:AccountInfo<'info>,
     #[account(
@@ -486,7 +486,7 @@ pub struct InstantTransfer<'info> {
         space=8+8,
     )]
     /// CHECK: seeds has been checked
-    pub withdraw_data: Box<Account<'info, SolWithdaw>>, 
+    pub withdraw_data: Box<Account<'info, SolWithdraw>>, 
     pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
@@ -522,7 +522,7 @@ impl Stream {
     }
 }
 #[account]
-pub struct SolWithdaw {
+pub struct SolWithdraw {
     pub amount: u64,
 }
 
@@ -577,9 +577,9 @@ mod tests {
            can_update:true, 
        }
    }
-   fn example_withdraw_data()->SolWithdaw
+   fn example_withdraw_data()->SolWithdraw
    {
-    SolWithdaw{
+    SolWithdraw{
         amount:0,
     }
    }

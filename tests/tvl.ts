@@ -1,5 +1,4 @@
 import { clusterApiUrl, Connection,PublicKey } from "@solana/web3.js";
-import { zebecProgram } from "./src/Constants";
 const programId = new PublicKey(
     "zbcKGdAmXfthXY3rEPBzexVByT2cqRqCZb9NwWdGQ2T"
   );

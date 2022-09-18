@@ -6,9 +6,8 @@ import {
   zebecVault,
   withdrawData,
 } from "./src/Accounts";
-import { airdropSol, getClusterTime, solFromProvider } from "./src/utils";
+import {  getClusterTime, solFromProvider } from "./src/utils";
 import { PREFIX, STREAM_SIZE, zebecProgram } from "./src/Constants";
-import { bytes } from "@project-serum/anchor/dist/cjs/utils";
 // Configure the client to use the local cluster.
 const provider = anchor.Provider.env();
 anchor.setProvider(provider);
@@ -107,7 +106,7 @@ describe("zebec native", () => {
     assert.equal(data_account.paused.toString(), "0");
 
    
-    const withdraw_info = await zebecProgram.account.solWithdaw.fetch(
+    const withdraw_info = await zebecProgram.account.solWithdraw.fetch(
       await withdrawData(PREFIX, sender.publicKey)
     );
     console.log("The streamed amount is %s",withdraw_info.amount.toString());
