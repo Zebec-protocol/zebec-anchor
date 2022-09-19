@@ -378,7 +378,8 @@ pub struct TokenStream<'info> {
 pub struct TokenStreamUpdate<'info> {
     #[account(mut,
         constraint= data_account.sender==source_account.key(),
-        constraint= data_account.receiver==dest_account.key(),            
+        constraint= data_account.receiver==dest_account.key(), 
+        constraint= data_account.token_mint==mint.key(),            
     )]
     pub data_account:  Account<'info, StreamToken>,
     #[account(mut,
@@ -506,7 +507,8 @@ pub struct TokenWithdrawStream<'info> {
        #[account(mut,
             constraint= data_account.sender==source_account.key(),
             constraint= data_account.receiver==dest_account.key(),    
-            constraint= data_account.fee_owner==fee_owner.key(),           
+            constraint= data_account.fee_owner==fee_owner.key(), 
+            constraint= data_account.token_mint==mint.key(),          
         )]
     pub data_account:  Account<'info, StreamToken>,
     #[account(
@@ -622,9 +624,11 @@ pub struct PauseTokenStream<'info> {
     pub receiver: AccountInfo<'info>,
     #[account(mut,
         constraint = data_account.receiver == receiver.key(),
-        constraint = data_account.sender == sender.key()
+        constraint = data_account.sender == sender.key(),
+        constraint= data_account.token_mint==mint.key(),
     )]
     pub data_account:  Account<'info, StreamToken>,
+    pub mint:Account<'info,Mint>,
 }
 #[derive(Accounts)]
 pub struct CancelTokenStream<'info> {
