@@ -2,7 +2,6 @@ Zebec is a revolutionary DeFi technology that empowers real-time, frictionless a
 
 # Cloning the repository
 ``` git clone https://github.com/Zebec-protocol/zebec-anchor.git ```
-
 # Build 
 ``` anchor build ```
 # Deploy
