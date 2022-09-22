@@ -1,4 +1,3 @@
-
 use anchor_lang::prelude::*;
 use anchor_spl::token::Transfer;
 use crate::{error::ErrorCode};
@@ -9,7 +8,7 @@ pub enum StreamStatus {
     Completed,
     Paused,
     Resumed,
-    Cancelled,      // Transaction has been cancelled
+    Cancelled,
 }
 pub fn create_transfer<'a>(
     sender: AccountInfo<'a>,
