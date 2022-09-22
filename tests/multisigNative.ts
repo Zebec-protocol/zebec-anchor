@@ -1,5 +1,5 @@
 import * as anchor from "@project-serum/anchor";
-import { assert } from "chai";
+import { assert,expect } from "chai";
 import {
   zebecVault,
   withdrawData,
@@ -243,7 +243,23 @@ describe("multisig", () => {
         signers: [transaction, ownerA],
       }
     );
+    const transaction_data= await multisigProgram.account.transaction.fetch(
+      transaction.publicKey
+    );
+    expect(transaction_data.status).to.have.property("pending");
     console.log("Multisig send sol directly", tx);
+    const rejectTx = await multisigProgram.rpc.reject({
+      accounts: {
+        multisig: multisig.publicKey,
+        transaction: transaction.publicKey,
+        owner: ownerC.publicKey,
+      },
+      signers: [ownerC],
+    });
+    console.log(
+      "Multisig Send SOl Transaction Rejected by ownerC",
+      rejectTx
+    );
     const approveTx = await multisigProgram.rpc.approve({
       accounts: {
         multisig: multisig.publicKey,
@@ -256,7 +272,6 @@ describe("multisig", () => {
       "Multisig Send SOl Transaction Approved by ownerB",
       approveTx
     );
-
     const executeTx=await multisigProgram.rpc.executeTransaction({
       accounts: {
         multisig: multisig.publicKey,
@@ -280,6 +295,96 @@ describe("multisig", () => {
       "Multisig Send SOl Transaction execute",
       executeTx
     );
+    const transaction_execute= await multisigProgram.account.transaction.fetch(
+      transaction.publicKey
+    );
+    expect(transaction_execute.status).to.have.property("executed");
+
+
+  });  
+  it("Rejecting Send Sol directly from Multisig", async () => {
+    // multisigSigner is sender, all the transaction will be signed from multisigSigner account
+    const [multisigSigner, nonce] =
+      await anchor.web3.PublicKey.findProgramAddress(
+        [multisig.publicKey.toBuffer()],
+        multisigProgram.programId
+      );
+    const pid = zebecProgram.programId;
+    const accounts = [
+      {
+        pubkey: multisigSigner,
+        isWritable: true,
+        isSigner: true,
+      },
+      {
+        pubkey: receiver_direct.publicKey,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: anchor.web3.SystemProgram.programId,
+        isWritable: false,
+        isSigner: false,
+      }
+    ];
+    const transaction = anchor.web3.Keypair.generate();
+    const data = zebecProgram.coder.instruction.encode("sendSolDirectly", {
+      amount: new anchor.BN(1000000),
+    });
+    const txSize = getTxSize(accounts, owners, false, 8);
+    const tx = await multisigProgram.rpc.createTransaction(
+      pid,
+      accounts,
+      data,
+      {
+        accounts: {
+          multisig: multisig.publicKey,
+          transaction: transaction.publicKey,
+          proposer: ownerA.publicKey,
+        },
+        instructions: [
+          await multisigProgram.account.transaction.createInstruction(
+            transaction,
+            txSize
+          ),
+        ],
+        signers: [transaction, ownerA],
+      }
+    );
+    const transaction_data= await multisigProgram.account.transaction.fetch(
+      transaction.publicKey
+    );
+    expect(transaction_data.status).to.have.property("pending");
+    console.log("Multisig send sol directly", tx);
+    const rejectTx1 = await multisigProgram.rpc.reject({
+      accounts: {
+        multisig: multisig.publicKey,
+        transaction: transaction.publicKey,
+        owner: ownerC.publicKey,
+      },
+      signers: [ownerC],
+    });
+    console.log(
+      "Multisig Send SOl Transaction Rejected by ownerC",
+      rejectTx1
+    );
+    const rejectTx2 = await multisigProgram.rpc.reject({
+      accounts: {
+        multisig: multisig.publicKey,
+        transaction: transaction.publicKey,
+        owner: ownerB.publicKey,
+      },
+      signers: [ownerB],
+    });
+    console.log(
+      "Multisig Send SOl Transaction rejected by ownerB",
+      rejectTx2
+    );
+    const transaction_reject= await multisigProgram.account.transaction.fetch(
+      transaction.publicKey
+    );
+    expect(transaction_reject.status).to.have.property("cancelled");
+    //With status cancelled transaction can't be executed  
   });  
   it("Creating stream from Multisig", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(

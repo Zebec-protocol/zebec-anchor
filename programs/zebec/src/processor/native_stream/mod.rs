@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::{utils::{create_transfer,create_transfer_signed,check_overflow,calculate_comission},error::ErrorCode,constants::*,create_fee_account::FeeVaultData};
+use crate::{utils::{create_transfer,create_transfer_signed,check_overflow,calculate_comission,StreamStatus},error::ErrorCode,constants::*,create_fee_account::FeeVaultData};
 pub fn process_deposit_sol(
     ctx: Context<InitializeMasterPda>,
     amount: u64
@@ -34,6 +34,7 @@ pub fn process_native_stream(
     data_account.can_cancel=can_cancel;
     data_account.can_update=can_update;
     withdraw_state.amount=withdraw_state.amount.checked_add(amount).ok_or(ErrorCode::NumericalOverflow)?;
+    data_account.scheduled()?;
     Ok(())
 }
 pub fn process_update_native_stream(
@@ -48,6 +49,10 @@ pub fn process_update_native_stream(
     if !data_account.can_update
     {
         return Err(ErrorCode::UpdateNotAllowed.into());
+    }
+    if data_account.status==StreamStatus::Cancelled
+    {
+        return Err(ErrorCode::StreamCancelled.into());
     }
     if now > data_account.start_time
     {
@@ -67,6 +72,14 @@ pub fn process_withdraw_stream(
     let data_account = &mut ctx.accounts.data_account;
     let withdraw_state = &mut ctx.accounts.withdraw_data;
     let zebec_vault =&mut  ctx.accounts.zebec_vault;
+    if data_account.status==StreamStatus::Cancelled
+    {
+        return Err(ErrorCode::StreamCancelled.into());
+    }
+    if data_account.status==StreamStatus::Completed
+    {
+        return Err(ErrorCode::StreamCompleted.into());
+    }
     let now = Clock::get()?.unix_timestamp as u64;
     if now <= data_account.start_time {
         return Err(ErrorCode::StreamNotStarted.into());
@@ -101,7 +114,7 @@ pub fn process_withdraw_stream(
     let total_transfered = data_account.withdrawn+data_account.paused_amt;
     if total_transfered >= data_account.amount 
     {
-       create_transfer_signed(data_account.to_account_info(),ctx.accounts.sender.to_account_info(),data_account.to_account_info().lamports())?;
+       data_account.completed()?;
     }
     withdraw_state.amount=withdraw_state.amount.checked_sub(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
     Ok(())
@@ -110,6 +123,10 @@ pub fn process_pause_stream(
     ctx: Context<Pause>,
 ) -> Result<()> {
     let data_account = &mut ctx.accounts.data_account;
+    if data_account.status==StreamStatus::Cancelled
+    {
+        return Err(ErrorCode::StreamCancelled.into());
+    }
     let now = Clock::get()?.unix_timestamp as u64;
     let allowed_amt = data_account.allowed_amt(now);
     if now >= data_account.end_time {
@@ -126,11 +143,13 @@ pub fn process_pause_stream(
         data_account.paused_amt= data_account.paused_amt.checked_add(allowed_amt_now).ok_or(ErrorCode::NumericalOverflow)?;
         data_account.paused = 0;
         data_account.paused_at = 0;
+        data_account.resumed()?;
     }
     else{
         data_account.paused = 1;
         data_account.withdraw_limit = allowed_amt;
         data_account.paused_at = now;
+        data_account.paused()?;
     }
     Ok(())
 }
@@ -141,6 +160,10 @@ pub fn process_cancel_stream(
     let withdraw_state = &mut ctx.accounts.withdraw_data;
     let zebec_vault =&mut  ctx.accounts.zebec_vault;
     let now = Clock::get()?.unix_timestamp as u64;
+    if data_account.status==StreamStatus::Cancelled
+    {
+        return Err(ErrorCode::StreamCancelled.into());
+    }
     if !data_account.can_cancel
     {
         return Err(ErrorCode::CancelNotAllowed.into());
@@ -178,7 +201,7 @@ pub fn process_cancel_stream(
     //changing withdraw state
     withdraw_state.amount=withdraw_state.amount.checked_add(data_account.withdrawn).ok_or(ErrorCode::NumericalOverflow)?;
     withdraw_state.amount=withdraw_state.amount.checked_sub(data_account.amount).ok_or(ErrorCode::NumericalOverflow)?;
-    //closing the data account to end the stream
+    data_account.cancelled()?;
     Ok(())
 } 
 pub fn process_native_transfer(
@@ -428,7 +451,6 @@ pub struct Cancel<'info> {
        constraint = data_account.receiver == receiver.key(),
        constraint = data_account.sender == sender.key(),
        constraint= data_account.fee_owner==fee_owner.key(),
-       close = sender,//to close the data account and send rent exempt lamports to sender
    )]
    pub data_account:  Account<'info, Stream>,
    #[account(
@@ -514,13 +536,36 @@ pub struct Stream {
     pub paused_amt:u64,
     pub can_cancel:bool,
     pub can_update:bool,
+    pub status: StreamStatus, 
 }
 impl Stream {
     pub fn allowed_amt(&self, now: u64) -> u64 {
         ((((now - self.start_time) as u128) * self.amount as u128) / (self.end_time - self.start_time) as u128)
         as u64
     }
-    
+
+    pub fn scheduled(&mut self) -> Result<()>{
+        self.status = StreamStatus::Scheduled;
+        Ok(())
+    }
+
+    pub fn cancelled(&mut self) -> Result<()>{
+        self.status = StreamStatus::Cancelled;
+        Ok(())
+    }
+
+    pub fn paused(&mut self) -> Result<()>{
+        self.status = StreamStatus::Paused;
+        Ok(())
+    }
+    pub fn resumed(&mut self) -> Result<()>{
+        self.status = StreamStatus::Resumed;
+        Ok(())
+    }
+    pub fn completed(&mut self) -> Result<()>{
+        self.status = StreamStatus::Completed;
+        Ok(())
+    }
 }
 #[account]
 pub struct SolWithdraw {
@@ -558,8 +603,7 @@ mod tests {
        
    }
    fn example_stream()->Stream
-   {
-      
+   {      
        Stream{
            start_time: 1660820300,
            end_time:   1660820400,
@@ -575,6 +619,7 @@ mod tests {
            paused_amt:0,
            can_cancel:true,
            can_update:true, 
+           status:StreamStatus::Scheduled,
        }
    }
    fn example_withdraw_data()->SolWithdraw

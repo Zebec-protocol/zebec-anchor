@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use crate::{utils::{create_transfer_signed,create_transfer_token_signed,create_transfer_token,check_overflow,calculate_comission},error::ErrorCode,constants::*,create_fee_account::FeeVaultData};
+use crate::{utils::{create_transfer_token_signed,create_transfer_token,check_overflow,calculate_comission,StreamStatus},error::ErrorCode,constants::*,create_fee_account::FeeVaultData};
 use anchor_spl::{associated_token::AssociatedToken, token::{Mint, Token, TokenAccount,}};
 
 pub fn process_deposit_token(
@@ -42,6 +42,7 @@ pub fn process_token_stream(
     data_account.fee_owner= ctx.accounts.fee_owner.key();
     data_account.fee_percentage=fee_percentage;
     withdraw_state.amount=withdraw_state.amount.checked_add(amount).ok_or(ErrorCode::NumericalOverflow)?;
+    data_account.scheduled()?;
     Ok(())
 }
 pub fn process_update_token_stream(
@@ -56,6 +57,10 @@ pub fn process_update_token_stream(
     if !data_account.can_update
     {
         return Err(ErrorCode::UpdateNotAllowed.into());
+    }
+    if data_account.status==StreamStatus::Cancelled
+    {
+        return Err(ErrorCode::StreamCancelled.into());
     }
     if now > data_account.start_time
     {
@@ -75,6 +80,14 @@ pub fn process_withdraw_token_stream(
     let data_account =&mut ctx.accounts.data_account;
     let withdraw_state =&mut ctx.accounts.withdraw_data;
     let vault_token_account=&mut ctx.accounts.pda_account_token_account;
+    if data_account.status==StreamStatus::Cancelled
+    {
+        return Err(ErrorCode::StreamCancelled.into());
+    }
+    if data_account.status==StreamStatus::Completed
+    {
+        return Err(ErrorCode::StreamCompleted.into());
+    }
     let now = Clock::get()?.unix_timestamp as u64;
     if now <= data_account.start_time {
         return Err(ErrorCode::StreamNotStarted.into());
@@ -125,7 +138,7 @@ pub fn process_withdraw_token_stream(
     data_account.withdrawn= data_account.withdrawn.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
     let total_transfered = data_account.withdrawn+data_account.paused_amt;
     if total_transfered >= data_account.amount { 
-        create_transfer_signed(data_account.to_account_info(),ctx.accounts.source_account.to_account_info(), data_account.to_account_info().lamports())?;
+        data_account.completed()?;
     } 
     withdraw_state.amount=withdraw_state.amount.checked_sub(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;     
     Ok(())
@@ -134,6 +147,10 @@ pub fn process_pause_resume_token_stream(
     ctx: Context<PauseTokenStream>,
 ) -> Result<()> {
     let data_account = &mut ctx.accounts.data_account;
+    if data_account.status==StreamStatus::Cancelled
+    {
+        return Err(ErrorCode::StreamCancelled.into());
+    }
     let now = Clock::get()?.unix_timestamp as u64;
     let allowed_amt = data_account.allowed_amt(now);
     if now >= data_account.end_time {
@@ -150,11 +167,13 @@ pub fn process_pause_resume_token_stream(
         data_account.paused_amt=data_account.paused_amt.checked_add(allowed_amt_now).ok_or(ErrorCode::NumericalOverflow)?;
         data_account.paused = 0;
         data_account.paused_at = 0;
+        data_account.resumed()?;
     }
     else{
         data_account.paused = 1;
         data_account.withdraw_limit = allowed_amt;
         data_account.paused_at = now;
+        data_account.paused()?;
     }
     Ok(())
 }
@@ -164,6 +183,10 @@ pub fn process_cancel_token_stream(
     let data_account =&mut ctx.accounts.data_account;
     let withdraw_state = &mut ctx.accounts.withdraw_data;
     let vault_token_account=&mut ctx.accounts.pda_account_token_account;
+    if data_account.status==StreamStatus::Cancelled
+    {
+        return Err(ErrorCode::StreamCancelled.into());
+    }
     let now = Clock::get()?.unix_timestamp as u64;
     if !data_account.can_cancel
     {
@@ -219,7 +242,7 @@ pub fn process_cancel_token_stream(
     //changing withdraw state
     withdraw_state.amount=withdraw_state.amount.checked_add(data_account.withdrawn).ok_or(ErrorCode::NumericalOverflow)?;
     withdraw_state.amount=withdraw_state.amount.checked_sub(data_account.amount).ok_or(ErrorCode::NumericalOverflow)?;
-      //data account gets closed after the end     
+    data_account.cancelled()?;   
     Ok(())
 }
 pub fn process_token_withdrawal(
@@ -668,7 +691,6 @@ pub struct CancelTokenStream<'info> {
            constraint= data_account.sender==source_account.key(),
            constraint= data_account.receiver==dest_account.key(),   
            constraint= data_account.fee_owner==fee_owner.key(),   
-           close = source_account //to close the data account and send rent exempt lamports to sender       
        )]
    pub data_account:  Account<'info, StreamToken>,
    #[account(
@@ -724,11 +746,34 @@ pub struct StreamToken {
     pub paused_amt:u64,
     pub can_cancel:bool,
     pub can_update:bool,
+    pub status:StreamStatus,
 }
 impl StreamToken {
     pub fn allowed_amt(&self, now: u64) -> u64 {
         ((((now - self.start_time) as u128) * self.amount as u128) / (self.end_time - self.start_time) as u128)
         as u64
+    }
+    pub fn scheduled(&mut self) -> Result<()>{
+        self.status = StreamStatus::Scheduled;
+        Ok(())
+    }
+
+    pub fn cancelled(&mut self) -> Result<()>{
+        self.status = StreamStatus::Cancelled;
+        Ok(())
+    }
+    pub fn resumed(&mut self) -> Result<()>{
+        self.status = StreamStatus::Resumed;
+        Ok(())
+    }
+    pub fn paused(&mut self) -> Result<()>{
+        self.status = StreamStatus::Paused;
+        Ok(())
+    }
+
+    pub fn completed(&mut self) -> Result<()>{
+        self.status = StreamStatus::Completed;
+        Ok(())
     }
 }
 #[account]
@@ -784,7 +829,7 @@ mod tests {
            paused_amt:0,
            can_cancel:true,
            can_update:true,
- 
+           status:StreamStatus::Scheduled,
        }
    }
    fn example_withdraw_data()->TokenWithdraw

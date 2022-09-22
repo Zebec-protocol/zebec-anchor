@@ -58,6 +58,9 @@ export const getTxSize = (
     datasize = data_size + vec_discriminator;
   }
   const num_owner = owners.length ;
+  const rejected_size=4 + (num_owner * 32);
+  const approved_size=4 + (num_owner * 32);
+  const status_size=12+1;
   const sig_vec_size = vec_discriminator + num_owner * 1;
   const txSize =
     discriminator +
@@ -67,6 +70,9 @@ export const getTxSize = (
     datasize + //size of data
     sig_vec_size + //signed vector
     1 + //did execute bool
+    rejected_size+
+    approved_size+
+    status_size+
     4; //Owner set sequence number.
   return txSize;
 };

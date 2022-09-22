@@ -1,5 +1,5 @@
 import * as anchor from "@project-serum/anchor";
-import { assert } from "chai";
+import { assert,expect } from "chai";
 import * as spl from "@solana/spl-token";
 import { PublicKey } from "@solana/web3.js";
 import { solFromProvider, getClusterTime } from "./src/utils";
@@ -160,7 +160,7 @@ describe("zebec token", () => {
       receiver.publicKey.toString()
     );
     assert.equal(data_account.paused.toString(), "0");
-
+    expect(data_account.status).to.have.property("scheduled");
     const withdraw_info = await zebecProgram.account.tokenWithdraw.fetch(
       await withdrawData(PREFIX_TOKEN, sender.publicKey, tokenMint.publicKey)
     );
@@ -262,6 +262,7 @@ describe("zebec token", () => {
     const data_account = await zebecProgram.account.streamToken.fetch(
       dataAccount.publicKey
     );
+    expect(data_account.status).to.have.property("paused");
     assert.equal(data_account.paused.toString(), "1");
   });
   it("Withdraw Token Stream", async () => {
@@ -333,6 +334,10 @@ describe("zebec token", () => {
       let withdrawn_amount = data_account.withdrawn;
       assert.equal(withdrawn_amount.toString(), withdraw_amt.toString());
     }
+    if (data_account.withdrawn+data_account.paused_amt==data_account.amount)
+    {
+      expect(data_account.status).to.have.property("completed");
+    }
   });
   it("Resume Stream Token", async () => {
     const tx = await zebecProgram.rpc.pauseResumeTokenStream({
@@ -349,6 +354,7 @@ describe("zebec token", () => {
     const data_account = await zebecProgram.account.streamToken.fetch(
       dataAccount.publicKey
     );
+    expect(data_account.status).to.have.property("resumed");
     assert.equal(data_account.paused.toString(), "0");
   });
   it("Instant Token Transfer", async () => {
@@ -437,6 +443,10 @@ describe("zebec token", () => {
       },
       signers: [sender],
     });
+    const data_account = await zebecProgram.account.streamToken.fetch(
+      dataAccount.publicKey
+    );
+    expect(data_account.status).to.have.property("cancelled");
     console.log("Your signature for cancel token stream is ", tx);
   });
   it("Initializer Token Withdrawal", async () => {

@@ -1,5 +1,5 @@
 import * as anchor from "@project-serum/anchor";
-import { assert } from "chai";
+import { assert,expect } from "chai";
 import {
   feeVault,
   create_fee_account,
@@ -104,7 +104,7 @@ describe("zebec native", () => {
       receiver.publicKey.toString()
     );
     assert.equal(data_account.paused.toString(), "0");
-
+    expect(data_account.status).to.have.property("scheduled");
    
     const withdraw_info = await zebecProgram.account.solWithdraw.fetch(
       await withdrawData(PREFIX, sender.publicKey)
@@ -192,6 +192,10 @@ describe("zebec native", () => {
       signers: [sender],
       instructions: [],
     });
+    const data_account = await zebecProgram.account.stream.fetch(
+      dataAccount.publicKey
+    );
+    expect(data_account.status).to.have.property("paused");
     console.log("Your transaction signature", tx);
   });
   it("Resume Stream", async () => {
@@ -204,6 +208,10 @@ describe("zebec native", () => {
       signers: [sender],
       instructions: [],
     });
+    const data_account = await zebecProgram.account.stream.fetch(
+      dataAccount.publicKey
+    );
+    expect(data_account.status).to.have.property("resumed");
     console.log("Your transaction signature", tx);
   });
   it("Withdraw Sol", async () => {
@@ -221,6 +229,13 @@ describe("zebec native", () => {
       },
       signers: [receiver],
     });
+    const data_account = await zebecProgram.account.stream.fetch(
+      dataAccount.publicKey
+    );
+    if (data_account.withdrawn+data_account.paused_amt==data_account.amount)
+    {
+      expect(data_account.status).to.have.property("completed");
+    }
     console.log("Your transaction signature", tx);
   });
   it("Instant Transfer", async () => {
@@ -252,6 +267,10 @@ describe("zebec native", () => {
       },
       signers: [sender],
     });
+    const data_account = await zebecProgram.account.stream.fetch(
+      dataAccount.publicKey
+    );
+    expect(data_account.status).to.have.property("cancelled");
     console.log("Your transaction signature", tx);
   });
   it("Initializer Withdrawal Sol", async () => {

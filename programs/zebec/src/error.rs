@@ -50,4 +50,8 @@ pub enum ErrorCode {
     UpdateNotAllowed,
     #[msg("OutOfBound")]
     OutOfBound,
+    #[msg("StreamAlreadyCancelled")]
+    StreamCancelled,
+    #[msg("StreamAlreadyCompleted")]
+    StreamCompleted,
 }

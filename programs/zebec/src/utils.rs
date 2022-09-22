@@ -3,6 +3,14 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::Transfer;
 use crate::{error::ErrorCode};
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+pub enum StreamStatus {
+    Scheduled,
+    Completed,
+    Paused,
+    Resumed,
+    Cancelled,      // Transaction has been cancelled
+}
 pub fn create_transfer<'a>(
     sender: AccountInfo<'a>,
     receiver: AccountInfo<'a>,
