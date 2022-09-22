@@ -520,12 +520,12 @@ impl Stream {
         ((((now - self.start_time) as u128) * self.amount as u128) / (self.end_time - self.start_time) as u128)
         as u64
     }
+    
 }
 #[account]
 pub struct SolWithdraw {
     pub amount: u64,
 }
-
 #[cfg(test)]
 mod tests {
    use super::*;
