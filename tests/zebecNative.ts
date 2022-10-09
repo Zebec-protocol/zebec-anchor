@@ -6,7 +6,11 @@ import {
   zebecVault,
   withdrawData,
 } from "./src/Accounts";
+<<<<<<< HEAD
 import {  getClusterTime, solFromProvider } from "./src/utils";
+=======
+import { getClusterTime, solFromProvider } from "./src/utils";
+>>>>>>> master
 import { PREFIX, STREAM_SIZE, zebecProgram } from "./src/Constants";
 // Configure the client to use the local cluster.
 const provider = anchor.Provider.env();

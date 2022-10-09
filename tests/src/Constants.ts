@@ -3,8 +3,13 @@ import * as anchor from "@project-serum/anchor";
 
 const provider = anchor.Provider.env();
 anchor.setProvider(provider);
+<<<<<<< HEAD
 export const programId = new anchor.web3.PublicKey(
   "zbcKGdAmXfthXY3rEPBzexVByT2cqRqCZb9NwWdGQ2T"
+=======
+const programId = new anchor.web3.PublicKey(
+  "DMFbM74dfiii1eHdutvjUFwuP8zdMrycGRfrMwKCtB5w"
+>>>>>>> master
 );
 export const multisigProgramId = new anchor.web3.PublicKey(
   "b6ZPysThkApNx2YDiGsPUiYPE7Ub1kTRdCWp7gBkzbr"
