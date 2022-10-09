@@ -45,7 +45,20 @@ pub fn process_withdraw_fees_sol(
     create_transfer_signed(ctx.accounts.fee_vault.to_account_info(),ctx.accounts.fee_owner.to_account_info(),ctx.accounts.fee_vault.lamports())?;
     Ok(())
 }
-
+pub fn process_update_fee(
+    ctx:Context<UpdateFees>,
+    fee_percentage:u64
+)->Result<()>{
+    require!(
+        fee_percentage <= 10000,
+        ErrorCode::OutOfBound
+    );
+    let data_create = &mut ctx.accounts.fee_vault_data;
+    //for 0.25 % fee percentage should be sent 25
+    //which is divided by 10000 to get 0.25%
+    data_create.fee_percentage=fee_percentage; 
+    Ok(())
+}
 #[derive(Accounts)]
 pub struct InitializeFeeVault<'info> {
     #[account(
@@ -141,6 +154,31 @@ pub struct WithdrawFeesToken<'info> {
         associated_token::authority = fee_owner,
     )]
     fee_owner_token_account: Box<Account<'info, TokenAccount>>,
+}
+#[derive(Accounts)]
+pub struct UpdateFees<'info> {
+    #[account(
+        seeds = [
+            fee_owner.key().as_ref(),
+            OPERATE.as_bytes(),           
+        ],bump,
+    )]
+    /// CHECK: seeds has been checked
+    pub fee_vault:AccountInfo<'info>,
+    #[account(
+        mut,
+        seeds = [
+            fee_owner.key().as_ref(),
+            OPERATEDATA.as_bytes(),
+            fee_vault.key().as_ref(),
+        ],bump,
+    )]
+    /// CHECK: new account initialize, do not need to be validated
+    pub fee_vault_data: Account<'info,FeeVaultData>,
+    #[account(mut)]
+    pub fee_owner: Signer<'info>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
 #[account]
 pub struct FeeVaultData

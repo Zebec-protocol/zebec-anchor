@@ -108,7 +108,7 @@ const createUserAndAssociatedWallet = async (
   return userAssociatedTokenAccount;
 };
 describe("multisig Token", () => {
-  it("Tests the multisig program", async () => {
+  it("Tests the create Multisig program", async () => {
     const num_owner = owners.length + 1;
     const multisigSize = 8 + 4 + 32 * num_owner + 8 + 1 + 4;
     const threshold = new anchor.BN(2);
@@ -154,8 +154,30 @@ describe("multisig Token", () => {
     });
     console.log("Your signature is ", tx);
   });
-  it("Send token directly", async () => {
-    const [multisigSigner, nonce] =
+  it("Update Fee Percentage", async () => {
+    const fee_percentage = new anchor.BN(20);
+    const tx = await zebecProgram.rpc.updateFees(fee_percentage, {
+      accounts: {
+        feeVault: await feeVault(fee_receiver.publicKey),
+        feeVaultData: await create_fee_account(fee_receiver.publicKey),
+        feeOwner: fee_receiver.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      },
+      signers: [fee_receiver],
+      instructions: [],
+    });
+    console.log("Your transaction signature is ", tx);
+    const data_create_set = await zebecProgram.account.feeVaultData.fetch(
+      await create_fee_account(fee_receiver.publicKey)
+    );
+    assert.equal(
+      data_create_set.feePercentage.toString(),
+      fee_percentage.toString()
+    );
+  });
+  it("Send token directly from Multisig", async () => {
+    const [multisigSigner, _nonce] =
       await anchor.web3.PublicKey.findProgramAddress(
         [multisig.publicKey.toBuffer()],
         multisigProgram.programId
@@ -278,7 +300,7 @@ describe("multisig Token", () => {
     });
     console.log("Send Token Directly executed ",exeTx);
   });
-  it("Deposit token", async () => {
+  it("Deposit token from Multisig to Multisig's Zebec Vault", async () => {
     const [multisigSigner, nonce] =
       await anchor.web3.PublicKey.findProgramAddress(
         [multisig.publicKey.toBuffer()],
@@ -404,7 +426,7 @@ describe("multisig Token", () => {
         }),
     });
   });
-  it("Creating token stream from multisig", async () => {
+  it("Creating token stream from Multisig", async () => {
     const [multisigSigner, nonce] =
       await anchor.web3.PublicKey.findProgramAddress(
         [multisig.publicKey.toBuffer()],
@@ -547,7 +569,7 @@ describe("multisig Token", () => {
       exeTxn
     );
   });
-  it("Updating token stream from multisig", async () => {
+  it("Updating token stream from Multisig", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
       [multisig.publicKey.toBuffer()],
       multisigProgram.programId
@@ -650,7 +672,7 @@ describe("multisig Token", () => {
       exeTxn
     );
   });
-  it("Pause token stream from multisig", async () => {
+  it("Pause token stream from Multisig", async () => {
     const [multisigSigner, nonce] =
       await anchor.web3.PublicKey.findProgramAddress(
         [multisig.publicKey.toBuffer()],
@@ -732,7 +754,7 @@ describe("multisig Token", () => {
     });
     console.log("Multisig Stream Token Transaction executed", exeTxn);
   });
-  it("Resume token stream from multisig", async () => {
+  it("Resume token stream from Multisig", async () => {
     const [multisigSigner, nonce] =
       await anchor.web3.PublicKey.findProgramAddress(
         [multisig.publicKey.toBuffer()],
@@ -814,7 +836,7 @@ describe("multisig Token", () => {
     });
     console.log("Resume Stream Token Transaction executed", exeTxn);
   });
-  it("Withdraw Token Stream", async () => {
+  it("Withdraw Token Stream for receiver", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
       [multisig.publicKey.toBuffer()],
       multisigProgram.programId
@@ -888,7 +910,7 @@ describe("multisig Token", () => {
       assert.equal(withdrawn_amount.toString(), withdraw_amt.toString());
     }
   });
-  it("Cancel token stream from multisig", async () => {
+  it("Cancel token stream from Multisig", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
       [multisig.publicKey.toBuffer()],
       multisigProgram.programId
@@ -1058,7 +1080,7 @@ describe("multisig Token", () => {
     });
     console.log("Cancel Stream Token Transaction executed", exeTxn);
   });
-  it("Instant Transfer from multisig", async () => {
+  it("Instant Transfer from Multisig", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
       [multisig.publicKey.toBuffer()],
       multisigProgram.programId
@@ -1199,7 +1221,7 @@ describe("multisig Token", () => {
     });
     console.log("Instant Token Transfer Transaction executed", exeTxn);
   });
-  it("Withdraw Deposited Token from multisig", async () => {
+  it("Withdraw Deposited Token from Multisig's Zebec Vault", async () => {
     const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
       [multisig.publicKey.toBuffer()],
       multisigProgram.programId

@@ -1,6 +1,7 @@
 //Zebec Anchor Program - https://docs.zebec.io/
 use anchor_lang::prelude::*;
-declare_id!("DMFbM74dfiii1eHdutvjUFwuP8zdMrycGRfrMwKCtB5w");
+use solana_security_txt::security_txt;
+declare_id!("zbcKGdAmXfthXY3rEPBzexVByT2cqRqCZb9NwWdGQ2T");
 
 pub mod utils;
 pub mod error;
@@ -27,6 +28,12 @@ mod zebec {
         ctx: Context<WithdrawFeesSol>,
     )->Result<()>{
         process_withdraw_fees_sol(ctx)
+    }
+    pub fn update_fees(
+        ctx: Context<UpdateFees>,
+        fee_percentage:u64,
+    )->Result<()>{
+        process_update_fee(ctx, fee_percentage)
     }
     pub fn deposit_sol(
         ctx: Context<InitializeMasterPda>,
@@ -145,3 +152,14 @@ mod zebec {
     }
 }
 
+security_txt! {
+    name: "Zebec Protocol",
+    project_url: "https://zebec.io/",
+    contacts: "email:security@zebec.io",
+    policy: "https://docs.zebec.io/",
+    preferred_languages: "en",
+    source_code: "https://github.com/Zebec-protocol/zebec-anchor",
+    auditors: "Trail of Bits, Inc (Anders Helsing and Troy Sargent)",
+    acknowledgements: "This program is elgible for bug bounty program, we appreciate any contributions that enhances security.
+                        -Zebec"
+}
