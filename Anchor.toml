@@ -1,5 +1,4 @@
 [programs.devnet] 
-<<<<<<< HEAD
 zebec = "zbcKGdAmXfthXY3rEPBzexVByT2cqRqCZb9NwWdGQ2T" 
 serum_multisig = "b6ZPysThkApNx2YDiGsPUiYPE7Ub1kTRdCWp7gBkzbr" 
 [programs.localnet] 
@@ -7,20 +6,13 @@ zebec = "zbcKGdAmXfthXY3rEPBzexVByT2cqRqCZb9NwWdGQ2T"
 serum_multisig = "b6ZPysThkApNx2YDiGsPUiYPE7Ub1kTRdCWp7gBkzbr" 
 [programs.mainnet] 
 zebec = "zbcKGdAmXfthXY3rEPBzexVByT2cqRqCZb9NwWdGQ2T" 
-=======
-zebec = "DMFbM74dfiii1eHdutvjUFwuP8zdMrycGRfrMwKCtB5w" 
-serum_multisig = "b6ZPysThkApNx2YDiGsPUiYPE7Ub1kTRdCWp7gBkzbr" 
-
-[programs.localnet] 
-zebec = "DMFbM74dfiii1eHdutvjUFwuP8zdMrycGRfrMwKCtB5w" 
->>>>>>> master
 serum_multisig = "b6ZPysThkApNx2YDiGsPUiYPE7Ub1kTRdCWp7gBkzbr" 
   
 [registry] 
 url = "https://anchor.projectserum.com" 
 
 [provider] 
-cluster = "devnet" 
+cluster = "localnet" 
 wallet = "~/.config/solana/id.json" 
 
   

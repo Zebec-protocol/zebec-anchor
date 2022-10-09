@@ -1,11 +1,7 @@
 //Zebec Anchor Program - https://docs.zebec.io/
 use anchor_lang::prelude::*;
-<<<<<<< HEAD
 use solana_security_txt::security_txt;
 declare_id!("zbcKGdAmXfthXY3rEPBzexVByT2cqRqCZb9NwWdGQ2T");
-=======
-declare_id!("DMFbM74dfiii1eHdutvjUFwuP8zdMrycGRfrMwKCtB5w");
->>>>>>> master
 
 pub mod utils;
 pub mod error;
