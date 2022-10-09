@@ -78,8 +78,7 @@ pub fn process_withdraw_stream(
         allowed_amt = data_account.amount;
     }
     //if paused only the amount equal to withdraw limit is allowed
-    if data_account.paused == 1  
-    {
+    if data_account.paused == 1  {
         allowed_amt=data_account.withdraw_limit;
     }
     //allowed amount is subtracted from paused amount
