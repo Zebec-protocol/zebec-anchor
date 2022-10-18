@@ -5,9 +5,9 @@ import {
   create_fee_account,
   zebecVault,
   withdrawData,
-} from "./src/Accounts";
-import {  getClusterTime, solFromProvider } from "./src/utils";
-import { PREFIX, STREAM_SIZE, zebecProgram } from "./src/Constants";
+} from "../src/Accounts";
+import {  getClusterTime, solFromProvider } from "../src/utils";
+import { PREFIX, STREAM_SIZE, zebecProgram } from "../src/Constants";
 // Configure the client to use the local cluster.
 const provider = anchor.Provider.env();
 anchor.setProvider(provider);

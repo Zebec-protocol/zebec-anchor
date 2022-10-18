@@ -1,8 +1,7 @@
 import * as anchor from "@project-serum/anchor";
 import { assert } from "chai";
 import * as spl from "@solana/spl-token";
-import { PublicKey } from "@solana/web3.js";
-import { solFromProvider, getClusterTime } from "./src/utils";
+import { airdropDelay, airdropSol, solFromProvider } from "../../../src/utils";
 import {
   getTokenBalance,
   createMint,
@@ -11,17 +10,20 @@ import {
   create_fee_account,
   zebecVault,
   withdrawData,
-} from "./src/Accounts";
-import { PREFIX_TOKEN, STREAM_TOKEN_SIZE, zebecProgram } from "./src/Constants";
+} from "../../../src/Accounts";
+import { PREFIX_TOKEN, zebecProgram } from "../../../src/Constants";
+import {
+  getBalanceOfSplToken,
+  getClusterTime,
+  getTxTime,
+} from "../../../src/utils";
 // Configure the client to use the local cluster.
 const provider = anchor.Provider.env();
 anchor.setProvider(provider);
 
-//constant strings
-const OPERATE = "NewVaultOption";
-const OPERATEDATA = "NewVaultOptionData";
 //data account
 const dataAccount = anchor.web3.Keypair.generate();
+const dataAccount1 = anchor.web3.Keypair.generate();
 //token mint
 const tokenMint = new anchor.web3.Keypair();
 //users account
@@ -30,7 +32,11 @@ const receiver = anchor.web3.Keypair.generate();
 const fee_receiver = new anchor.web3.Keypair();
 let startTime: anchor.BN;
 let endTime: anchor.BN;
-describe("zebec token", () => {
+let startTimeSecond: anchor.BN;
+let endTimeSecond: anchor.BN;
+
+const amount = new anchor.BN(1000000);
+describe("zebec token updateFeeCheckCancel", () => {
   it("Airdrop Solana", async () => {
     await solFromProvider(zebecProgram.provider, sender.publicKey, 3);
     await solFromProvider(zebecProgram.provider, receiver.publicKey, 1);
@@ -83,7 +89,7 @@ describe("zebec token", () => {
       spl.TOKEN_PROGRAM_ID,
       spl.ASSOCIATED_TOKEN_PROGRAM_ID
     );
-    const amount = new anchor.BN(5000000);
+    const amount = new anchor.BN(16000000);
     const tx = await zebecProgram.rpc.depositToken(amount, {
       accounts: {
         zebecVault: await zebecVault(sender.publicKey),
@@ -108,18 +114,17 @@ describe("zebec token", () => {
   });
   it("Token Stream", async () => {
     let now = await getClusterTime(provider.connection);
-    startTime = new anchor.BN(now + 100);
-    endTime = new anchor.BN(now + 200);
-    const amount = new anchor.BN(4000000);
-    const can_cancel = true;
-    const can_update = true;
-    const dataSize = STREAM_TOKEN_SIZE;
+    startTime = new anchor.BN(now);
+    endTime = new anchor.BN(now + 120);
+    const dataSize = 8 + 8 + 8 + 8 + 8 + 32 + 32 + 8 + 8 + 32 + 200;
+    let canCancel = true;
+    let canUpdate = true;
     const tx = await zebecProgram.rpc.tokenStream(
       startTime,
       endTime,
       amount,
-      can_cancel,
-      can_update,
+      canCancel,
+      canUpdate,
       {
         accounts: {
           dataAccount: dataAccount.publicKey,
@@ -128,8 +133,8 @@ describe("zebec token", () => {
             sender.publicKey,
             tokenMint.publicKey
           ),
-        feeOwner: fee_receiver.publicKey,
-        feeVaultData: await create_fee_account(fee_receiver.publicKey),
+          feeOwner: fee_receiver.publicKey,
+          feeVaultData: await create_fee_account(fee_receiver.publicKey),
           feeVault: await feeVault(fee_receiver.publicKey),
           sourceAccount: sender.publicKey,
           destAccount: receiver.publicKey,
@@ -151,6 +156,7 @@ describe("zebec token", () => {
     const data_account = await zebecProgram.account.streamToken.fetch(
       dataAccount.publicKey
     );
+
     assert.equal(data_account.startTime.toString(), startTime.toString());
     assert.equal(data_account.endTime.toString(), endTime.toString());
     assert.equal(data_account.amount.toString(), amount.toString());
@@ -165,13 +171,10 @@ describe("zebec token", () => {
       await withdrawData(PREFIX_TOKEN, sender.publicKey, tokenMint.publicKey)
     );
     assert.equal(withdraw_info.amount.toString(), amount.toString());
-    const data_create_set = await zebecProgram.account.feeVaultData.fetch(
-      await create_fee_account(fee_receiver.publicKey)
-    );
-    assert.equal(data_account.feePercentage.toString(),data_create_set.feePercentage.toString());
   });
+
   it("Update Fee Percentage", async () => {
-    const fee_percentage = new anchor.BN(20);
+    const fee_percentage = new anchor.BN(30);
     const tx = await zebecProgram.rpc.updateFees(fee_percentage, {
       accounts: {
         feeVault: await feeVault(fee_receiver.publicKey),
@@ -192,47 +195,53 @@ describe("zebec token", () => {
       fee_percentage.toString()
     );
   });
-  it("Verify Fee Percentage unchanged in Stream", async () => {
-    const data_create_set = await zebecProgram.account.feeVaultData.fetch(
-      await create_fee_account(fee_receiver.publicKey)
-    );
-    const data_account = await zebecProgram.account.streamToken.fetch(
-      dataAccount.publicKey
-    );
-    assert.notEqual(data_account.feePercentage.toString(),data_create_set.feePercentage.toString());
-  });
-  it("Token Stream Update", async () => {
+  it("Second Token Stream", async () => {
     let now = await getClusterTime(provider.connection);
-    startTime = new anchor.BN(now - 40);
-    endTime = new anchor.BN(now + 40);
-    const amount = new anchor.BN(4000000);
-    const tx = await zebecProgram.rpc.tokenStreamUpdate(
-      startTime,
-      endTime,
+    startTimeSecond = new anchor.BN(now);
+    endTimeSecond = new anchor.BN(now + 120);
+    const dataSize = 8 + 8 + 8 + 8 + 8 + 32 + 32 + 8 + 8 + 32 + 200;
+    let canCancel = true;
+    let canUpdate = true;
+    const tx = await zebecProgram.rpc.tokenStream(
+      startTimeSecond,
+      endTimeSecond,
       amount,
+      canCancel,
+      canUpdate,
       {
         accounts: {
-          dataAccount: dataAccount.publicKey,
+          dataAccount: dataAccount1.publicKey,
           withdrawData: await withdrawData(
             PREFIX_TOKEN,
             sender.publicKey,
             tokenMint.publicKey
           ),
+          feeOwner: fee_receiver.publicKey,
+          feeVaultData: await create_fee_account(fee_receiver.publicKey),
+          feeVault: await feeVault(fee_receiver.publicKey),
           sourceAccount: sender.publicKey,
           destAccount: receiver.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: spl.TOKEN_PROGRAM_ID,
           mint: tokenMint.publicKey,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         },
-
-        signers: [sender],
+        instructions: [
+          await zebecProgram.account.streamToken.createInstruction(
+            dataAccount1,
+            dataSize
+          ),
+        ],
+        signers: [sender, dataAccount1],
       }
     );
-    console.log("Your transaction for token stream update signature", tx);
+    console.log("Your transaction for token stream signature", tx);
     const data_account = await zebecProgram.account.streamToken.fetch(
-      dataAccount.publicKey
+      dataAccount1.publicKey
     );
 
-    assert.equal(data_account.startTime.toString(), startTime.toString());
-    assert.equal(data_account.endTime.toString(), endTime.toString());
+    assert.equal(data_account.startTime.toString(), startTimeSecond.toString());
+    assert.equal(data_account.endTime.toString(), endTimeSecond.toString());
     assert.equal(data_account.amount.toString(), amount.toString());
     assert.equal(data_account.sender.toString(), sender.publicKey.toString());
     assert.equal(
@@ -240,160 +249,13 @@ describe("zebec token", () => {
       receiver.publicKey.toString()
     );
     assert.equal(data_account.paused.toString(), "0");
-
-    const withdraw_info = await zebecProgram.account.tokenWithdraw.fetch(
-      await withdrawData(PREFIX_TOKEN, sender.publicKey, tokenMint.publicKey)
-    );
-    assert.equal(withdraw_info.amount.toString(), amount.toString());
-  });
-  it("Pause Stream Token", async () => {
-    const tx = await zebecProgram.rpc.pauseResumeTokenStream({
-      accounts: {
-        sender: sender.publicKey,
-        receiver: receiver.publicKey,
-        dataAccount: dataAccount.publicKey,
-        mint: tokenMint.publicKey,
-      },
-      signers: [sender],
-      instructions: [],
-    });
-
-    console.log("Your transaction for pause token stream signature", tx);
-    const data_account = await zebecProgram.account.streamToken.fetch(
-      dataAccount.publicKey
-    );
-    assert.equal(data_account.paused.toString(), "1");
-  });
-  it("Withdraw Token Stream", async () => {
-    const pda_token_account = await spl.getAssociatedTokenAddress(
-      tokenMint.publicKey,
-      await zebecVault(sender.publicKey),
-      true,
-      spl.TOKEN_PROGRAM_ID,
-      spl.ASSOCIATED_TOKEN_PROGRAM_ID
-    );
-    const dest_token_account = await spl.getAssociatedTokenAddress(
-      tokenMint.publicKey,
-      receiver.publicKey,
-      true,
-      spl.TOKEN_PROGRAM_ID,
-      spl.ASSOCIATED_TOKEN_PROGRAM_ID
-    );
-    const fee_token_account = await spl.getAssociatedTokenAddress(
-      tokenMint.publicKey,
-      await feeVault(fee_receiver.publicKey),
-      true,
-      spl.TOKEN_PROGRAM_ID,
-      spl.ASSOCIATED_TOKEN_PROGRAM_ID
-    );
-    let now = new anchor.BN(Math.floor(new Date().getTime() / 1000));
-    const tx = await zebecProgram.rpc.withdrawTokenStream({
-      accounts: {
-        destAccount: receiver.publicKey,
-        sourceAccount: sender.publicKey,
-      feeOwner: fee_receiver.publicKey,
-      feeVaultData: await create_fee_account(fee_receiver.publicKey),
-        feeVault: await feeVault(fee_receiver.publicKey),
-        zebecVault: await zebecVault(sender.publicKey),
-        dataAccount: dataAccount.publicKey,
-        withdrawData: await withdrawData(
-          PREFIX_TOKEN,
-          sender.publicKey,
-          tokenMint.publicKey
-        ),
-        systemProgram: anchor.web3.SystemProgram.programId,
-        tokenProgram: spl.TOKEN_PROGRAM_ID,
-        associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-        mint: tokenMint.publicKey,
-        pdaAccountTokenAccount: pda_token_account,
-        destTokenAccount: dest_token_account,
-        feeReceiverTokenAccount: fee_token_account,
-      },
-      signers: [receiver],
-    });
-    console.log("Your signature for withdraw token stream is ", tx);
-    const data_account = await zebecProgram.account.streamToken.fetch(
-      dataAccount.publicKey
-    );
-    let withdraw_amt =
-      (await getTokenBalance(provider.connection, fee_token_account)) +
-      (await getTokenBalance(provider.connection, dest_token_account));
-    if (data_account.paused == 1 && now < endTime) {
-      assert.equal(
-        data_account.withdrawLimit.toString(),
-        withdraw_amt.toString()
-      );
-    }
-    if (data_account.paused != 1 && now > endTime) {
-      let withdrawn_amount = data_account.amount;
-      assert.equal(withdrawn_amount.toString(), withdraw_amt.toString());
-    }
-    if (data_account.paused != 1 && now < endTime) {
-      let withdrawn_amount = data_account.withdrawn;
-      assert.equal(withdrawn_amount.toString(), withdraw_amt.toString());
-    }
-  });
-  it("Resume Stream Token", async () => {
-    const tx = await zebecProgram.rpc.pauseResumeTokenStream({
-      accounts: {
-        sender: sender.publicKey,
-        receiver: receiver.publicKey,
-        dataAccount: dataAccount.publicKey,
-        mint: tokenMint.publicKey,
-      },
-      signers: [sender],
-      instructions: [],
-    });
-    console.log("Your transaction for resume token stream signature", tx);
-    const data_account = await zebecProgram.account.streamToken.fetch(
-      dataAccount.publicKey
-    );
-    assert.equal(data_account.paused.toString(), "0");
-  });
-  it("Instant Token Transfer", async () => {
-    const zebec_vault = await zebecVault(sender.publicKey);
-    const amount = new anchor.BN(1000000);
-    const pda_token_account = await spl.getAssociatedTokenAddress(
-      tokenMint.publicKey,
-      zebec_vault,
-      true,
-      spl.TOKEN_PROGRAM_ID,
-      spl.ASSOCIATED_TOKEN_PROGRAM_ID
-    );
-    const dest_token_account = await spl.getAssociatedTokenAddress(
-      tokenMint.publicKey,
-      receiver.publicKey,
-      true,
-      spl.TOKEN_PROGRAM_ID,
-      spl.ASSOCIATED_TOKEN_PROGRAM_ID
-    );
-    const tx = await zebecProgram.rpc.instantTokenTransfer(amount, {
-      accounts: {
-        zebecVault: zebec_vault,
-        destAccount: receiver.publicKey,
-        sourceAccount: sender.publicKey,
-        withdrawData: await withdrawData(
-          PREFIX_TOKEN,
-          sender.publicKey,
-          tokenMint.publicKey
-        ),
-        systemProgram: anchor.web3.SystemProgram.programId,
-        tokenProgram: spl.TOKEN_PROGRAM_ID,
-        associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-        mint: tokenMint.publicKey,
-        pdaAccountTokenAccount: pda_token_account,
-        destTokenAccount: dest_token_account,
-      },
-      signers: [sender],
-    });
-    console.log("Your signature for instant transfer is ", tx);
   });
   it("Cancel Token Stream", async () => {
+    await airdropDelay(3300);
+    let zebecVaultAddress = await zebecVault(sender.publicKey);
     const pda_token_account = await spl.getAssociatedTokenAddress(
       tokenMint.publicKey,
-      await zebecVault(sender.publicKey),
+      zebecVaultAddress,
       true,
       spl.TOKEN_PROGRAM_ID,
       spl.ASSOCIATED_TOKEN_PROGRAM_ID
@@ -411,6 +273,37 @@ describe("zebec token", () => {
       true,
       spl.TOKEN_PROGRAM_ID,
       spl.ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    let receiverBalanceBeforeCancel = await getBalanceOfSplToken(
+      tokenMint.publicKey,
+      receiver.publicKey,
+      provider
+    );
+    let zebecVaultBalanceBeforeCancel = await getBalanceOfSplToken(
+      tokenMint.publicKey,
+      zebecVaultAddress,
+      provider
+    );
+    const data_account = await zebecProgram.account.streamToken.fetch(
+      dataAccount.publicKey
+    );
+    let dataAccountAmount = data_account.amount.toString();
+    let dataAccountWithdrawn = data_account.withdrawn.toString();
+    let dataAccountSol = await provider.connection.getBalance(
+      dataAccount.publicKey
+    );
+    const withdraw_data_before_cancel = await withdrawData(
+      PREFIX_TOKEN,
+      sender.publicKey,
+      tokenMint.publicKey
+    );
+    const withdraw_state_info_before_cancel =
+      await zebecProgram.account.tokenWithdraw.fetch(
+        withdraw_data_before_cancel
+      );
+    let senderBalanceBeforeCancelNative = await provider.connection.getBalance(
+      sender.publicKey
     );
     const tx = await zebecProgram.rpc.cancelTokenStream({
       accounts: {
@@ -419,7 +312,7 @@ describe("zebec token", () => {
         feeOwner: fee_receiver.publicKey,
         feeVaultData: await create_fee_account(fee_receiver.publicKey),
         feeVault: await feeVault(fee_receiver.publicKey),
-        zebecVault: await zebecVault(sender.publicKey),
+        zebecVault: zebecVaultAddress,
         dataAccount: dataAccount.publicKey,
         withdrawData: await withdrawData(
           PREFIX_TOKEN,
@@ -437,92 +330,196 @@ describe("zebec token", () => {
       },
       signers: [sender],
     });
+    let cancelTxTime = await getTxTime(tx, provider);
     console.log("Your signature for cancel token stream is ", tx);
-  });
-  it("Initializer Token Withdrawal", async () => {
-    const source_token_account = await spl.getAssociatedTokenAddress(
-      tokenMint.publicKey,
+
+    const withdraw_data_after_cancel = await withdrawData(
+      PREFIX_TOKEN,
       sender.publicKey,
-      true,
-      spl.TOKEN_PROGRAM_ID,
-      spl.ASSOCIATED_TOKEN_PROGRAM_ID
+      tokenMint.publicKey
     );
+    const withdraw_state_info_after_cancel =
+      await zebecProgram.account.tokenWithdraw.fetch(
+        withdraw_data_after_cancel
+      );
+    let diffOfWithdrawStateInfoAmount =
+      withdraw_state_info_before_cancel.amount.toString() -
+      withdraw_state_info_after_cancel.amount.toString();
+    let zebecVaultBalanceAfterCancel = await getBalanceOfSplToken(
+      tokenMint.publicKey,
+      zebecVaultAddress,
+      provider
+    );
+
+    let receiverBalanceAfterCancel = await getBalanceOfSplToken(
+      tokenMint.publicKey,
+      receiver.publicKey,
+      provider
+    );
+    let diffBetweenStartAndEndTime = endTime - startTime;
+    let diffBetweenStartAndCancel = cancelTxTime - startTime;
+    let perSecondAmount = amount / diffBetweenStartAndEndTime;
+    let totalSpendTime = diffBetweenStartAndCancel;
+    let totalSpendAmount = totalSpendTime * perSecondAmount;
+    let zebecFee = parseInt(((totalSpendAmount / 100) * 0.25).toString());
+
+    let expectedReceiverBalance = Math.floor(
+      Number(receiverBalanceBeforeCancel) +
+        Number(totalSpendAmount) -
+        Number(zebecFee)
+    );
+    let expectedZebecVaultBalance = Math.ceil(
+      zebecVaultBalanceBeforeCancel - totalSpendAmount
+    );
+
+    assert.equal(
+      diffOfWithdrawStateInfoAmount,
+      Number(dataAccountAmount) - dataAccountWithdrawn
+    );
+
+    assert.equal(zebecVaultBalanceAfterCancel, expectedZebecVaultBalance);
+    assert.equal(receiverBalanceAfterCancel, expectedReceiverBalance);
+  });
+  it("Cancel Second Token Stream", async () => {
+    await airdropDelay(4300);
+    let zebecVaultAddress = await zebecVault(sender.publicKey);
     const pda_token_account = await spl.getAssociatedTokenAddress(
       tokenMint.publicKey,
-      await zebecVault(sender.publicKey),
+      zebecVaultAddress,
       true,
       spl.TOKEN_PROGRAM_ID,
       spl.ASSOCIATED_TOKEN_PROGRAM_ID
     );
-    const amount = new anchor.BN(500);
-    const tx = await zebecProgram.rpc.tokenWithdrawal(amount, {
+    const dest_token_account = await spl.getAssociatedTokenAddress(
+      tokenMint.publicKey,
+      receiver.publicKey,
+      true,
+      spl.TOKEN_PROGRAM_ID,
+      spl.ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    const fee_token_account = await spl.getAssociatedTokenAddress(
+      tokenMint.publicKey,
+      await feeVault(fee_receiver.publicKey),
+      true,
+      spl.TOKEN_PROGRAM_ID,
+      spl.ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    let receiverBalanceBeforeCancel = await getBalanceOfSplToken(
+      tokenMint.publicKey,
+      receiver.publicKey,
+      provider
+    );
+    let zebecVaultBalanceBeforeCancel = await getBalanceOfSplToken(
+      tokenMint.publicKey,
+      zebecVaultAddress,
+      provider
+    );
+    const data_account = await zebecProgram.account.streamToken.fetch(
+      dataAccount1.publicKey
+    );
+    let dataAccountAmount = data_account.amount.toString();
+    let dataAccountWithdrawn = data_account.withdrawn.toString();
+    let dataAccountSol = await provider.connection.getBalance(
+      dataAccount1.publicKey
+    );
+
+    const withdraw_data_before_cancel = await withdrawData(
+      PREFIX_TOKEN,
+      sender.publicKey,
+      tokenMint.publicKey
+    );
+    const withdraw_state_info_before_cancel =
+      await zebecProgram.account.tokenWithdraw.fetch(
+        withdraw_data_before_cancel
+      );
+    let senderBalanceBeforeCancelNative = await provider.connection.getBalance(
+      sender.publicKey
+    );
+    const tx = await zebecProgram.rpc.cancelTokenStream({
       accounts: {
-        zebecVault: await zebecVault(sender.publicKey),
+        destAccount: receiver.publicKey,
+        sourceAccount: sender.publicKey,
+        feeOwner: fee_receiver.publicKey,
+        feeVaultData: await create_fee_account(fee_receiver.publicKey),
+        feeVault: await feeVault(fee_receiver.publicKey),
+        zebecVault: zebecVaultAddress,
+        dataAccount: dataAccount1.publicKey,
         withdrawData: await withdrawData(
           PREFIX_TOKEN,
           sender.publicKey,
           tokenMint.publicKey
         ),
-        sourceAccount: sender.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: spl.TOKEN_PROGRAM_ID,
         associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         mint: tokenMint.publicKey,
-        sourceAccountTokenAccount: source_token_account,
         pdaAccountTokenAccount: pda_token_account,
+        destTokenAccount: dest_token_account,
+        feeReceiverTokenAccount: fee_token_account,
       },
       signers: [sender],
-      instructions: [],
     });
-    console.log("Your transaction signature for token withdrawal", tx);
-  });
-  it("Retrieve Fees", async () => {
-    const [fee_vault, _un] = await PublicKey.findProgramAddress(
-      [
-        fee_receiver.publicKey.toBuffer(),
-        anchor.utils.bytes.utf8.encode(OPERATE),
-      ],
-      zebecProgram.programId
+    let cancelTxTime = await getTxTime(tx, provider);
+    console.log("Your signature for cancel token stream is ", tx);
+    // if (paused == "1" && resumed == "1") {
+    let senderBalanceAfterCancelNative = await provider.connection.getBalance(
+      sender.publicKey
     );
-    const [create_fee_account, _] = await PublicKey.findProgramAddress(
-      [
-        fee_receiver.publicKey.toBuffer(),
-        anchor.utils.bytes.utf8.encode(OPERATEDATA),
-        fee_vault.toBuffer(),
-      ],
-      zebecProgram.programId
+    let balance = (
+      (await getTokenBalance(provider.connection, fee_token_account)) -
+      (await getTokenBalance(provider.connection, dest_token_account))
+    ).toString();
+
+    const withdraw_data_after_cancel = await withdrawData(
+      PREFIX_TOKEN,
+      sender.publicKey,
+      tokenMint.publicKey
     );
-    const feeOwner_token_account = await spl.getAssociatedTokenAddress(
+    const withdraw_state_info_after_cancel =
+      await zebecProgram.account.tokenWithdraw.fetch(
+        withdraw_data_after_cancel
+      );
+    let diffOfWithdrawStateInfoAmount =
+      withdraw_state_info_before_cancel.amount.toString() -
+      withdraw_state_info_after_cancel.amount.toString();
+    let zebecVaultBalanceAfterCancel = await getBalanceOfSplToken(
       tokenMint.publicKey,
-      fee_receiver.publicKey,
-      true,
-      spl.TOKEN_PROGRAM_ID,
-      spl.ASSOCIATED_TOKEN_PROGRAM_ID
+      zebecVaultAddress,
+      provider
     );
-    const fee_vault_token_account = await spl.getAssociatedTokenAddress(
+
+    let receiverBalanceAfterCancel = await getBalanceOfSplToken(
       tokenMint.publicKey,
-      fee_vault,
-      true,
-      spl.TOKEN_PROGRAM_ID,
-      spl.ASSOCIATED_TOKEN_PROGRAM_ID
+      receiver.publicKey,
+      provider
     );
-    const tx = await zebecProgram.rpc.withdrawFeesToken({
-      accounts: {
-        feeOwner: fee_receiver.publicKey,
-        feeVaultData: create_fee_account,
-        feeVault: fee_vault,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        tokenProgram: spl.TOKEN_PROGRAM_ID,
-        associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-        mint: tokenMint.publicKey,
-        feeReceiverVaultTokenAccount: fee_vault_token_account,
-        feeOwnerTokenAccount: feeOwner_token_account,
-      },
-      signers: [fee_receiver],
-      instructions: [],
-    });
-    console.log("Your signature for retrieve fees is ", tx);
+    let diffBetweenStartAndEndTime = endTimeSecond - startTimeSecond;
+    let diffBetweenStartAndCancel = cancelTxTime - startTimeSecond;
+    let perSecondAmount = amount / diffBetweenStartAndEndTime;
+    let totalSpendTime = diffBetweenStartAndCancel;
+    let totalSpendAmount = totalSpendTime * perSecondAmount;
+    let zebecFee = parseInt(((totalSpendAmount / 100) * 0.3).toString());
+    let expectedReceiverBalance = Math.ceil(
+      Number(receiverBalanceBeforeCancel) +
+        Number(totalSpendAmount) -
+        Number(zebecFee)
+    );
+
+    let expectedZebecVaultBalance = (
+      zebecVaultBalanceBeforeCancel - totalSpendAmount
+    ).toFixed();
+
+    assert.equal(
+      diffOfWithdrawStateInfoAmount,
+      Number(dataAccountAmount) - dataAccountWithdrawn
+    );
+    assert.equal(
+      senderBalanceAfterCancelNative,
+      Number(dataAccountSol) + senderBalanceBeforeCancelNative
+    );
+    assert.equal(zebecVaultBalanceAfterCancel, expectedZebecVaultBalance);
+    assert.equal(receiverBalanceAfterCancel, expectedReceiverBalance);
+    // }
   });
 });

@@ -1,6 +1,11 @@
-import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import {
+  PublicKey,
+  LAMPORTS_PER_SOL,
+  GetProgramAccountsFilter,
+} from "@solana/web3.js";
 import * as anchor from "@project-serum/anchor";
 import { Accounts } from "./types";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 export const airdropSol = async (
   connection: anchor.web3.Connection,
@@ -13,10 +18,12 @@ export const airdropSol = async (
   const tx = await connection.confirmTransaction(await signature);
   return signature;
 };
+
 export const airdropDelay = async (ms: number): Promise<unknown> => {
   const delay = new Promise((resolve) => setTimeout(resolve, ms));
   return delay;
 };
+
 export const getClusterTime = async (connection: anchor.web3.Connection) => {
   const parsedClock = await connection.getParsedAccountInfo(
     anchor.web3.SYSVAR_CLOCK_PUBKEY
@@ -27,6 +34,7 @@ export const getClusterTime = async (connection: anchor.web3.Connection) => {
   const clusterTimeStamp = parsedClockAccount.info.unixTimestamp;
   return clusterTimeStamp;
 };
+
 export const solFromProvider = async (
   provider: anchor.Provider,
   receiver: PublicKey,
@@ -47,7 +55,7 @@ export const getTxSize = (
   accounts: Array<Accounts>,
   owners: Array<PublicKey>,
   isDataVector: boolean,
-  data_size:number,
+  data_size: number
 ) => {
   const vec_discriminator = 8;
   const discriminator = 8;
@@ -57,7 +65,7 @@ export const getTxSize = (
   if (isDataVector) {
     datasize = data_size + vec_discriminator;
   }
-  const num_owner = owners.length ;
+  const num_owner = owners.length;
   const sig_vec_size = vec_discriminator + num_owner * 1;
   const txSize =
     discriminator +
@@ -70,3 +78,56 @@ export const getTxSize = (
     4; //Owner set sequence number.
   return txSize;
 };
+
+export const getBalanceOfSplToken = async (
+  splTokenAddress,
+  wallet,
+  provider: anchor.Provider
+) => {
+  const filters: GetProgramAccountsFilter[] = [
+    {
+      dataSize: 165, //size of account (bytes)
+    },
+    {
+      memcmp: {
+        offset: 32, //location of our query in the account (bytes)
+        bytes: wallet,
+      },
+    },
+  ];
+  const accounts = await provider.connection.getParsedProgramAccounts(
+    TOKEN_PROGRAM_ID,
+    {
+      filters: filters,
+    }
+  );
+  await airdropDelay(2000);
+  let tokenBalance = 0;
+  accounts.forEach((account, i) => {
+    const parsedAccountInfo: any = account.account.data;
+    const mintAddress: string = parsedAccountInfo["parsed"]["info"]["mint"];
+    if (splTokenAddress == mintAddress) {
+      tokenBalance =
+        parsedAccountInfo["parsed"]["info"]["tokenAmount"]["amount"];
+      return;
+    }
+  });
+  return tokenBalance;
+};
+
+export const getTxTime = async (tx: string, provider: anchor.Provider) => {
+  await new Promise((r) => setTimeout(r, 1000));
+  let startStreamTxTime = await provider.connection.getTransaction(tx, {
+    commitment: "confirmed",
+  });
+  let { blockTime } = startStreamTxTime;
+  return blockTime;
+};
+
+export async function getNativeTokenBalance(
+  address: PublicKey,
+  provider: anchor.Provider
+) {
+  let tokenBalance = await provider.connection.getBalance(address);
+  return tokenBalance;
+}
