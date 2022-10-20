@@ -9,7 +9,7 @@ zebec = "zbcKGdAmXfthXY3rEPBzexVByT2cqRqCZb9NwWdGQ2T"
 serum_multisig = "b6ZPysThkApNx2YDiGsPUiYPE7Ub1kTRdCWp7gBkzbr" 
   
 [registry] 
-url = "https://anchor.projectserum.com" 
+url = "https://www.apr.dev/" 
 
 [provider] 
 cluster = "localnet" 

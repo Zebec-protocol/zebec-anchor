@@ -34,7 +34,7 @@ pub enum ErrorCode {
     StreamAlreadyCompleted,
     #[msg("Cannot withdraw streaming amount")]
     StreamedAmt,
-    #[msg("cannot cancel this transaction")]
+    #[msg("Cannot cancel this transaction")]
     CancelNotAllowed,
     #[msg("An account's balance was too small to complete the instruction")]
     InsufficientFunds,
