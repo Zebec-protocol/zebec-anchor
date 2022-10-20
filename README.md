@@ -4,11 +4,18 @@ Zebec is a revolutionary DeFi technology that empowers real-time, frictionless a
 ``` git clone https://github.com/Zebec-protocol/zebec-anchor.git ```
 # Build 
 ``` anchor build ```
-# Deploy
-```solana program deploy $(pwd)/target/deploy/zebec.so ```
-```solana program deploy $(pwd)/target/deploy/serum_multisig.so ```
+# ProgramIDs
+```solana address -k $(pwd)/target/deploy/zebec-keypair.json ```
+<br />
+
+```solana address -k  $(pwd)/target/deploy/serum_multisig-keypair.json ```
 # Update program Id
-Update the program ids inside **Anchor.toml** and **programs/zebec/src/lib.rs** & **programs/multisig/src/lib.rs**
+Update the program ids inside **Anchor.toml**,**programs/zebec/src/lib.rs**&**programs/multisig/src/lib.rs**
+<br />
+
+Update the program ids inside **tests/src/Constants.ts**
+# Install dependencies
+``` npm install ```
 # Run test
 ``` anchor test ```
 
