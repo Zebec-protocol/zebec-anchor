@@ -699,6 +699,15 @@ describe("multisig Token", () => {
         isWritable: false,
         isSigner: false,
       },
+      {
+        pubkey: await withdrawData(
+          PREFIX_TOKEN,
+          multisigSigner,
+          tokenMint.publicKey
+        ),
+        isWritable: true,
+        isSigner: false,
+      },
     ];
     const transaction = anchor.web3.Keypair.generate();
     const data = zebecProgram.coder.instruction.encode(
@@ -784,6 +793,15 @@ describe("multisig Token", () => {
       {
         pubkey: tokenMint.publicKey,
         isWritable: false,
+        isSigner: false,
+      },
+      {
+        pubkey: await withdrawData(
+          PREFIX_TOKEN,
+          multisigSigner,
+          tokenMint.publicKey
+        ),
+        isWritable: true,
         isSigner: false,
       },
     ];

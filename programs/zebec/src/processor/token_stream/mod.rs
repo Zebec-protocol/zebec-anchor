@@ -123,7 +123,14 @@ pub fn process_withdraw_token_stream(
                                     comission)?;  
 
     data_account.withdrawn= data_account.withdrawn.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
-    let total_transfered = data_account.withdrawn+data_account.paused_amt;
+    let mut total_transfered = data_account.withdrawn+data_account.paused_amt;
+    if data_account.paused==1 && now>data_account.end_time
+    {
+        let mut deduction=data_account.amount.checked_sub(total_transfered).ok_or(ErrorCode::NumericalOverflow)?;// withdrawn and paused amt is previously subtracted 
+        deduction=deduction.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?; //t withdraw limit - total_transfered is not subtracted in withdraw data
+        allowed_amt=deduction;
+        total_transfered=data_account.amount;    
+    }
     if total_transfered >= data_account.amount { 
         create_transfer_signed(data_account.to_account_info(),ctx.accounts.source_account.to_account_info(), data_account.to_account_info().lamports())?;
     } 
@@ -134,6 +141,7 @@ pub fn process_pause_resume_token_stream(
     ctx: Context<PauseTokenStream>,
 ) -> Result<()> {
     let data_account = &mut ctx.accounts.data_account;
+    let withdraw_state = &mut ctx.accounts.withdraw_data;
     let now = Clock::get()?.unix_timestamp as u64;
     let allowed_amt = data_account.allowed_amt(now);
     if now >= data_account.end_time {
@@ -148,6 +156,7 @@ pub fn process_pause_resume_token_stream(
         let mut allowed_amt_now = data_account.allowed_amt(now);
         allowed_amt_now = allowed_amt_now.checked_sub(amount_paused_at).ok_or(ErrorCode::NumericalOverflow)?;
         data_account.paused_amt=data_account.paused_amt.checked_add(allowed_amt_now).ok_or(ErrorCode::NumericalOverflow)?;
+        withdraw_state.amount=withdraw_state.amount.checked_sub(allowed_amt_now).ok_or(ErrorCode::NumericalOverflow)?;     
         data_account.paused = 0;
         data_account.paused_at = 0;
     }
@@ -218,6 +227,7 @@ pub fn process_cancel_token_stream(
                                     comission)?;  
     //changing withdraw state
     withdraw_state.amount=withdraw_state.amount.checked_add(data_account.withdrawn).ok_or(ErrorCode::NumericalOverflow)?;
+    withdraw_state.amount=withdraw_state.amount.checked_add(data_account.paused_amt).ok_or(ErrorCode::NumericalOverflow)?;
     withdraw_state.amount=withdraw_state.amount.checked_sub(data_account.amount).ok_or(ErrorCode::NumericalOverflow)?;
       //data account gets closed after the end     
     Ok(())
@@ -629,6 +639,15 @@ pub struct PauseTokenStream<'info> {
     )]
     pub data_account:  Account<'info, StreamToken>,
     pub mint:Account<'info,Mint>,
+    #[account(
+        mut,
+        seeds = [
+            PREFIX_TOKEN.as_bytes(),
+            sender.key().as_ref(),
+            mint.key().as_ref(),
+        ],bump,
+    )]
+    pub withdraw_data: Box<Account<'info, TokenWithdraw>>,
 }
 #[derive(Accounts)]
 pub struct CancelTokenStream<'info> {

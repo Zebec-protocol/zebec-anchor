@@ -97,7 +97,15 @@ pub fn process_withdraw_stream(
     //commission
     create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.fee_vault.to_account_info(),comission)?;
     data_account.withdrawn= data_account.withdrawn.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?;
-    let total_transfered = data_account.withdrawn+data_account.paused_amt;
+    let mut total_transfered = data_account.withdrawn+data_account.paused_amt;
+    if data_account.paused==1 && now>data_account.end_time
+    {
+        let mut deduction=data_account.amount.checked_sub(total_transfered).ok_or(ErrorCode::NumericalOverflow)?;// withdrawn and paused amt is previously subtracted 
+        deduction=deduction.checked_add(allowed_amt).ok_or(ErrorCode::NumericalOverflow)?; //t withdraw limit - total_transfered is not subtracted in withdraw data
+        allowed_amt=deduction;
+        total_transfered=data_account.amount;
+        
+    }
     if total_transfered >= data_account.amount 
     {
        create_transfer_signed(data_account.to_account_info(),ctx.accounts.sender.to_account_info(),data_account.to_account_info().lamports())?;
@@ -109,6 +117,7 @@ pub fn process_pause_stream(
     ctx: Context<Pause>,
 ) -> Result<()> {
     let data_account = &mut ctx.accounts.data_account;
+    let withdraw_state = &mut ctx.accounts.withdraw_data;
     let now = Clock::get()?.unix_timestamp as u64;
     let allowed_amt = data_account.allowed_amt(now);
     if now >= data_account.end_time {
@@ -123,6 +132,7 @@ pub fn process_pause_stream(
         let mut allowed_amt_now = data_account.allowed_amt(now);
         allowed_amt_now=allowed_amt_now.checked_sub(amount_paused_at).ok_or(ErrorCode::NumericalOverflow)?;
         data_account.paused_amt= data_account.paused_amt.checked_add(allowed_amt_now).ok_or(ErrorCode::NumericalOverflow)?;
+        withdraw_state.amount=withdraw_state.amount.checked_sub(allowed_amt_now).ok_or(ErrorCode::NumericalOverflow)?;     
         data_account.paused = 0;
         data_account.paused_at = 0;
     }
@@ -176,6 +186,7 @@ pub fn process_cancel_stream(
     create_transfer_signed(zebec_vault.to_account_info(),ctx.accounts.fee_vault.to_account_info(),comission)?;
     //changing withdraw state
     withdraw_state.amount=withdraw_state.amount.checked_add(data_account.withdrawn).ok_or(ErrorCode::NumericalOverflow)?;
+    withdraw_state.amount=withdraw_state.amount.checked_add(data_account.paused_amt).ok_or(ErrorCode::NumericalOverflow)?;
     withdraw_state.amount=withdraw_state.amount.checked_sub(data_account.amount).ok_or(ErrorCode::NumericalOverflow)?;
     //closing the data account to end the stream
     Ok(())
@@ -408,6 +419,15 @@ pub struct Pause<'info> {
         constraint = data_account.sender == sender.key()
     )]
     pub data_account:  Box<Account<'info, Stream>>,
+    #[account(
+        mut,
+        seeds = [
+            PREFIX.as_bytes(),
+            sender.key().as_ref(),
+        ],bump,
+        )]
+        pub withdraw_data: Box<Account<'info, SolWithdraw>>,
+    
 }
 #[derive(Accounts)]
 pub struct Cancel<'info> {

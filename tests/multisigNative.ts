@@ -523,6 +523,11 @@ describe("multisig", () => {
         isWritable: true,
         isSigner: false,
       },
+      {
+        pubkey: await withdrawData(PREFIX, multisigSigner),
+        isWritable: true,
+        isSigner: false,
+      },
     ];
     const transaction = anchor.web3.Keypair.generate();
     const data = zebecProgram.coder.instruction.encode("pauseStream", {});
@@ -600,6 +605,11 @@ describe("multisig", () => {
       },
       {
         pubkey: dataAccount.publicKey,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: await withdrawData(PREFIX, multisigSigner),
         isWritable: true,
         isSigner: false,
       },

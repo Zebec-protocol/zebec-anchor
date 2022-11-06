@@ -253,6 +253,11 @@ describe("zebec token", () => {
         receiver: receiver.publicKey,
         dataAccount: dataAccount.publicKey,
         mint: tokenMint.publicKey,
+        withdrawData: await withdrawData(
+          PREFIX_TOKEN,
+          sender.publicKey,
+          tokenMint.publicKey
+        ),
       },
       signers: [sender],
       instructions: [],
@@ -341,6 +346,11 @@ describe("zebec token", () => {
         receiver: receiver.publicKey,
         dataAccount: dataAccount.publicKey,
         mint: tokenMint.publicKey,
+        withdrawData: await withdrawData(
+          PREFIX_TOKEN,
+          sender.publicKey,
+          tokenMint.publicKey
+        ),
       },
       signers: [sender],
       instructions: [],
