@@ -152,6 +152,7 @@ mod zebec {
     }
 }
 
+#[cfg(not(feature = "no-entrypoint"))]
 security_txt! {
     name: "Zebec Protocol",
     project_url: "https://zebec.io/",
