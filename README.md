@@ -1,5 +1,12 @@
 Zebec is a revolutionary DeFi technology that empowers real-time, frictionless and continuous streams of payments. The automatic money streams made possible through Zebec allow businesses, employees and consumers to completely reimagine how they are paid, how they invest and how they buy products or services.The program uses https://github.com/coral-xyz/multisig which provides Grant of Copyright License. We want to thank all the contributors of coral-xyz/multisig
 
+# Programs
+
+Streaming protocol - `zbcKGdAmXfthXY3rEPBzexVByT2cqRqCZb9NwWdGQ2T`
+
+Multisig - `b6ZPysThkApNx2YDiGsPUiYPE7Ub1kTRdCWp7gBkzbr`
+
+
 # Cloning the repository
 ``` git clone https://github.com/Zebec-protocol/zebec-anchor.git ```
 # Build 
