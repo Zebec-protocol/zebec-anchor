@@ -1,5 +1,7 @@
-import { PublicKey } from "@solana/web3.js";
-import * as anchor from "@project-serum/anchor";
+import * as anchor from '@project-serum/anchor';
+
+import { BatchTransfer } from '../../target/types/batch_transfer';
+import { SerumMultisig as Multisig } from '../../target/types/serum_multisig';
 
 const provider = anchor.Provider.env();
 anchor.setProvider(provider);
@@ -9,14 +11,21 @@ export const programId = new anchor.web3.PublicKey(
 export const multisigProgramId = new anchor.web3.PublicKey(
   "b6ZPysThkApNx2YDiGsPUiYPE7Ub1kTRdCWp7gBkzbr"
 );
+export const batchTransferProgramId = new anchor.web3.PublicKey("EarFC9nhqun3E2a9rdz2N7wSfVzbNB7q2zFweaHmaPWB");
+
 const idl = JSON.parse(
   require("fs").readFileSync("./target/idl/zebec.json", "utf8")
 );
 const multisigIdl = JSON.parse(
   require("fs").readFileSync("./target/idl/serum_multisig.json", "utf8")
 );
+
+const batchTransferIdl = JSON.parse(require("fs").readFileSync("./target/idl/batch_transfer.json", "utf8"))
+
+export const batchTransferProgram = new anchor.Program<BatchTransfer>(batchTransferIdl, batchTransferProgramId);
+
 export const zebecProgram = new anchor.Program(idl, programId);
-export const multisigProgram = new anchor.Program(
+export const multisigProgram = new anchor.Program<Multisig>(
   multisigIdl,
   multisigProgramId
 );

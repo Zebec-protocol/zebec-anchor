@@ -1,18 +1,23 @@
-import * as anchor from "@project-serum/anchor";
-import { assert } from "chai";
+import { assert } from 'chai';
+
+import * as anchor from '@project-serum/anchor';
+
 import {
-  zebecVault,
-  withdrawData,
   create_fee_account,
   feeVault,
-} from "./src/Accounts";
+  withdrawData,
+  zebecVault,
+} from './src/Accounts';
 import {
+  multisigProgram,
   PREFIX,
   STREAM_SIZE,
   zebecProgram,
-  multisigProgram,
-} from "./src/Constants";
-import { solFromProvider, getTxSize } from "./src/utils";
+} from './src/Constants';
+import {
+  getTxSize,
+  solFromProvider,
+} from './src/utils';
 
 // Configure the client to use the local cluster.
 const provider = anchor.Provider.env();

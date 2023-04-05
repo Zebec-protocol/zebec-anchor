@@ -17,4 +17,5 @@ wallet = "~/.config/solana/id.json"
 
   
 [scripts] 
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/zebecNative.ts" 
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/bulkTransfer.ts" 
+test-native = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/multisigNative.ts" 
