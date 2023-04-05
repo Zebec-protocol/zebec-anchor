@@ -1,6 +1,14 @@
-import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
-import * as anchor from "@project-serum/anchor";
-import { Accounts } from "./types";
+import * as anchor from '@project-serum/anchor';
+import {
+  createTransferInstruction,
+  getAssociatedTokenAddress,
+} from '@solana/spl-token';
+import {
+  LAMPORTS_PER_SOL,
+  PublicKey,
+} from '@solana/web3.js';
+
+import { Accounts } from './types';
 
 export const airdropSol = async (
   connection: anchor.web3.Connection,
@@ -69,4 +77,24 @@ export const getTxSize = (
     1 + //did execute bool
     4; //Owner set sequence number.
   return txSize;
+};
+
+
+export const tokenFromProvider = async (
+  provider: anchor.Provider,
+  receiver: PublicKey,
+  mint: PublicKey,
+  amount: number
+) => {
+  const destination = await getAssociatedTokenAddress(mint, receiver, true);
+  let txFund = new anchor.web3.Transaction();
+  txFund.add(
+    createTransferInstruction(provider.wallet.publicKey, destination, receiver, amount)
+  );
+  txFund.feePayer = provider.wallet.publicKey;
+  const {blockhash, lastValidBlockHeight} = await provider.connection.getLatestBlockhash();
+  txFund.recentBlockhash  = blockhash;
+  txFund.lastValidBlockHeight = lastValidBlockHeight;
+  const signed = await provider.wallet.signTransaction(txFund);
+  const sigTxFund = await provider.send(signed);
 };

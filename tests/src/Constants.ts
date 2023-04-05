@@ -11,7 +11,7 @@ export const programId = new anchor.web3.PublicKey(
 export const multisigProgramId = new anchor.web3.PublicKey(
   "b6ZPysThkApNx2YDiGsPUiYPE7Ub1kTRdCWp7gBkzbr"
 );
-export const batchTransferProgramId = new anchor.web3.PublicKey("EarFC9nhqun3E2a9rdz2N7wSfVzbNB7q2zFweaHmaPWB");
+export const batchTransferProgramId = new anchor.web3.PublicKey("66M9Ce7UvRUZASC5n1BU41QHHJ7RhAMPB6EcZDGedhxz");
 
 const idl = JSON.parse(
   require("fs").readFileSync("./target/idl/zebec.json", "utf8")

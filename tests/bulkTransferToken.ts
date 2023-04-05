@@ -5,6 +5,10 @@ import {
   BN,
   web3,
 } from '@project-serum/anchor';
+import {
+  getAssociatedTokenAddress,
+  TOKEN_PROGRAM_ID,
+} from '@solana/spl-token';
 
 import {
   batchTransferProgram,
@@ -13,6 +17,7 @@ import {
 import {
   getTxSize,
   solFromProvider,
+  tokenFromProvider,
 } from './src/utils';
 
 const provider = anchor.Provider.env();
@@ -57,10 +62,14 @@ describe("bulk transfer flow test", () => {
         // await solFromProvider(provider,receiver.publicKey,0.1);
         const multisigAccountInfo = await anchor.getProvider().connection.getAccountInfo(multisigSigner);
         console.log("Info :", multisigAccountInfo.owner.toBase58());
+       
+        const mint = new anchor.web3.PublicKey("AbLwGR8A1wvsiLWrzzA5eYPoQw51NVMcMMTPvAv5LTJ");
+        await tokenFromProvider(provider, multisigSigner, mint, 1);
       });
 
-    it("Transfer sol", async () => {
+    it("Transfer token", async () => {
         const pid = batchTransferProgram.programId;
+        const mint = new anchor.web3.PublicKey("AbLwGR8A1wvsiLWrzzA5eYPoQw51NVMcMMTPvAv5LTJ");
         const publicKeys: web3.PublicKey[] = [
           new web3.PublicKey("Fx3xZ86YZw3gJUHU3FQKKq6ZDbkDLHa5j4z84gBY5LzF"),
           new web3.PublicKey("4VbwC8uYtjfj2jimQpyshaXRW2u5A3iyhUXQFTb82kCV"),
@@ -72,9 +81,9 @@ describe("bulk transfer flow test", () => {
           new web3.PublicKey("AxuiXjbNsGGRSCHgDvHFr8Y2c53jbbpXPeiWBvJmdvaX"),
           new web3.PublicKey("5QeqNRYVjJ8Apt8D44JtDHq4R3kkNX9p6sLtf2yUMvFL"),
           new web3.PublicKey("BGv5qqyi69HgR6EEYQK6wdFRj3cWsK2PvntvgJ9ECCdV"),
-          new web3.PublicKey("4xrE4NUmXEW4PwCQU25AmLQmCBNagmWF8ehT5Qoyjrwk"),
-          new web3.PublicKey("DMGY4uF97WRGohaJLKHH7ndSwKTqsZLxZLwusitgpHue"),
-          new web3.PublicKey("H8dgDYpJWpHBauKfR1mpw6GybEVaUmPhy4phNbvLRpgA"),
+          // new web3.PublicKey("4xrE4NUmXEW4PwCQU25AmLQmCBNagmWF8ehT5Qoyjrwk"),
+          // new web3.PublicKey("DMGY4uF97WRGohaJLKHH7ndSwKTqsZLxZLwusitgpHue"),
+          // new web3.PublicKey("H8dgDYpJWpHBauKfR1mpw6GybEVaUmPhy4phNbvLRpgA"),
           // new web3.PublicKey("6q3CLKPQZECGA9QRHNdYmr796Cn8bYCgK9eHD63T6eeb"),
           // new web3.PublicKey("8XoCkZz1WM7ndkbQX8fVXaGYyJobroUs2o2of8m5S8HU"),
           // new web3.PublicKey("Gp2dJNgoqm8zqFHrgV5AZiGp3sRebdAqmP9werpzjMxF"),
@@ -85,28 +94,49 @@ describe("bulk transfer flow test", () => {
           // new web3.PublicKey("GqJjf4joy9tBtjKWoFJ4B3Qz8ebGvf5XcWeKJ3SaTvDb"),
           // new web3.PublicKey("3BYwYKd49HPh5EQDciPwWampjtL8cLNKMQrZh8QwKKyF")
         ];
+        const pubkeysTokenAccounts: web3.PublicKey[] = [];
+        for (let i = 0; i < publicKeys.length; i++) {
+          pubkeysTokenAccounts.push(await getAssociatedTokenAddress(mint, publicKeys[i], true))
+        }
         const amounts: BN[] = [];
         for (let i = 0; i < publicKeys.length; i++) {
             amounts.push(new BN(100000))
         }
-        const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
+          const [multisigSigner, _] = await anchor.web3.PublicKey.findProgramAddress(
             [multisig.publicKey.toBuffer()],
             multisigProgram.programId
           );
-
+          const multisigSignerTokenAccounts = await getAssociatedTokenAddress(mint, multisigSigner,true);
           console.log("multisig:", multisig.publicKey.toString(), "multisigSigner", multisigSigner.toString())
 
+      
           const accounts: web3.AccountMeta[] = [];
           accounts.push({
             pubkey: multisigSigner,
             isSigner: true,
             isWritable: true,
-          }, {
+          },
+          {
+            pubkey: multisigSignerTokenAccounts,
+            isSigner: false,
+            isWritable: true,
+          },
+          {
+            pubkey:mint,
+            isSigner: false,
+            isWritable: false,
+          },
+          {
+            pubkey: TOKEN_PROGRAM_ID,
+            isSigner: false,
+            isWritable: false,
+          },
+          {
             pubkey: web3.SystemProgram.programId,
             isSigner: false,
             isWritable: false,
           });
-          for (const account of publicKeys) {
+          for (const account of pubkeysTokenAccounts) {
             accounts.push({
               pubkey: account,
               isSigner: false,
@@ -118,8 +148,19 @@ describe("bulk transfer flow test", () => {
             pubkey: multisigSigner,
             isSigner: true,
             isWritable: true,
-          }, {
-            pubkey: web3.SystemProgram.programId,
+          }, 
+          {
+            pubkey: multisigSignerTokenAccounts,
+            isSigner: false,
+            isWritable: true,
+          },
+          {
+            pubkey: mint,
+            isSigner: false,
+            isWritable: false,
+          },
+          {
+            pubkey: TOKEN_PROGRAM_ID,
             isSigner: false,
             isWritable: false,
           });
