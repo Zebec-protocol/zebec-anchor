@@ -1,14 +1,12 @@
-import * as anchor from '@project-serum/anchor';
+import * as anchor from "@project-serum/anchor";
 import {
+  createAssociatedTokenAccountInstruction,
   createTransferInstruction,
   getAssociatedTokenAddress,
-} from '@solana/spl-token';
-import {
-  LAMPORTS_PER_SOL,
-  PublicKey,
-} from '@solana/web3.js';
+} from "@solana/spl-token";
+import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 
-import { Accounts } from './types';
+import { Accounts } from "./types";
 
 export const airdropSol = async (
   connection: anchor.web3.Connection,
@@ -55,7 +53,7 @@ export const getTxSize = (
   accounts: Array<Accounts>,
   owners: Array<PublicKey>,
   isDataVector: boolean,
-  data_size:number,
+  data_size: number
 ) => {
   const vec_discriminator = 8;
   const discriminator = 8;
@@ -65,7 +63,7 @@ export const getTxSize = (
   if (isDataVector) {
     datasize = data_size + vec_discriminator;
   }
-  const num_owner = owners.length ;
+  const num_owner = owners.length;
   const sig_vec_size = vec_discriminator + num_owner * 1;
   const txSize =
     discriminator +
@@ -79,22 +77,44 @@ export const getTxSize = (
   return txSize;
 };
 
-
 export const tokenFromProvider = async (
   provider: anchor.Provider,
   receiver: PublicKey,
   mint: PublicKey,
   amount: number
 ) => {
-  const destination = await getAssociatedTokenAddress(mint, receiver, true);
-  let txFund = new anchor.web3.Transaction();
-  txFund.add(
-    createTransferInstruction(provider.wallet.publicKey, destination, receiver, amount)
-  );
-  txFund.feePayer = provider.wallet.publicKey;
-  const {blockhash, lastValidBlockHeight} = await provider.connection.getLatestBlockhash();
-  txFund.recentBlockhash  = blockhash;
-  txFund.lastValidBlockHeight = lastValidBlockHeight;
-  const signed = await provider.wallet.signTransaction(txFund);
-  const sigTxFund = await provider.send(signed);
+  try {
+    const destination = await getAssociatedTokenAddress(mint, receiver, true);
+    const source = await getAssociatedTokenAddress(
+      mint,
+      provider.wallet.publicKey,
+      true
+    );
+    let txFund = new anchor.web3.Transaction();
+
+    txFund.add(
+      createAssociatedTokenAccountInstruction(
+        provider.wallet.publicKey,
+        destination,
+        receiver,
+        mint
+      ),
+      createTransferInstruction(
+        source,
+        destination,
+        provider.wallet.publicKey,
+        amount
+      )
+    );
+    txFund.feePayer = provider.wallet.publicKey;
+    const { blockhash, lastValidBlockHeight } =
+      await provider.connection.getLatestBlockhash();
+    txFund.recentBlockhash = blockhash;
+    txFund.lastValidBlockHeight = lastValidBlockHeight;
+    const signed = await provider.wallet.signTransaction(txFund);
+    const sigTxFund = await provider.send(signed);
+    console.log("sigTxFund", sigTxFund);
+  } catch (e) {
+    console.log(e);
+  }
 };
